@@ -1,211 +1,118 @@
-import Payment from "../models/payment.js";
+import mongoose from "mongoose";
+import axios from "axios";
+import { v4 as uuidv4 } from "uuid";
+import Payment from "../models/Payment.js";
+import Escrow from "../models/Escrow.js";
 import Order from "../models/Order.js";
 import Commission from "../models/Commission.js";
-import { initiateEscrowPayment, verifyPayment } from "../utils/paystack.js";
-import { v4 as uuidv4 } from "uuid";
+import User from "../models/User.js";
+import sendEmail from "../utils/sendEmail.js";
+import { io } from "../utils/socket.js";
 
-// Initiate Payment
-export const initiatePayment = async (req, res) => {
+// 🧾 Initiate Escrow Payment (via Paystack)
+export const initiateEscrowPayment = async (req, res) => {
   try {
     const { productId, amount } = req.body;
-    const buyerId = req.user.id;
-    const product = await Order.findById(productId).populate("sellerId");
+    const buyerId = req.user._id;
 
-    if (!product) return res.status(404).json({ message: "Product not found" });
+    const order = await Order.findById(productId).populate("seller");
+    if (!order) return res.status(404).json({ message: "Order not found" });
 
     const reference = uuidv4();
 
     const payment = await Payment.create({
-      buyerId,
-      sellerId: product.sellerId,
+      buyer: buyerId,
+      seller: order.seller._id,
       productId,
       amount,
       reference,
       status: "pending",
     });
 
-    const paystackResponse = await initiateEscrowPayment(
-      req.user.email,
-      amount,
-      reference,
-      { buyerId, productId, type: "escrow" }
+    const paystackRes = await axios.post(
+      "https://api.paystack.co/transaction/initialize",
+      {
+        email: req.user.email,
+        amount: amount * 100,
+        reference,
+        callback_url: `${process.env.CLIENT_URL}/payment/verify/${reference}`,
+      },
+      {
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+      }
     );
 
-    res.json({ paymentUrl: paystackResponse.data.authorization_url });
+    res.status(200).json({
+      success: true,
+      paymentUrl: paystackRes.data.data.authorization_url,
+      reference,
+    });
   } catch (error) {
     console.error("Payment initiation failed:", error);
     res.status(500).json({ message: "Payment initiation failed" });
   }
 };
 
-// Verify Payment
+// ✅ Verify Payment & Create Escrow
 export const verifyEscrowPayment = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
   try {
     const { reference } = req.params;
-    const verification = await verifyPayment(reference);
-    const status = verification.data.status;
 
-    if (status === "success") {
-      const payment = await Payment.findOneAndUpdate(
-        { reference },
-        { status: "in_escrow" },
-        { new: true }
-      );
-      res.json({ message: "Payment held in escrow", payment });
-    } else {
-      res.status(400).json({ message: "Payment not successful" });
-    }
-  } catch (error) {
-    res.status(500).json({ message: "Payment verification failed" });
-  }
-};
+    const verifyRes = await axios.get(
+      `https://api.paystack.co/transaction/verify/${reference}`,
+      {
+        headers: { Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}` },
+      }
+    );
 
-// Release Escrow (after buyer confirmation)
-export const releasePayment = async (req, res) => {
-  try {
-    const { orderId } = req.body;
-    const payment = await Payment.findOne({ productId: orderId, status: "in_escrow" });
-    if (!payment) return res.status(404).json({ message: "No escrow payment found" });
-
-    const commissionConfig = await Commission.findOne();
-    const commissionRate =
-      commissionConfig?.categoryRates.find(
-        (c) => c.category === payment.productId.category
-      )?.rate || commissionConfig?.globalRate || 5;
-
-    const commission = (payment.amount * commissionRate) / 100;
-    const sellerAmount = payment.amount - commission;
-
-    payment.status = "released";
-    payment.commission = commission;
-    await payment.save();
-
-    res.json({
-      message: "Payment released successfully",
-      sellerAmount,
-      commission,
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Escrow release failed" });
-  }
-};
-
-// Seller Payouts
-export const getSellerPayouts = async (req, res) => {
-  try {
-    const sellerId = req.user.id;
-    const payouts = await Payment.find({ sellerId });
-    res.json(payouts);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching payouts" });
-  }
-};
-
-export const releaseEscrow = async (req, res) => {
-  try {
-    const { escrowId } = req.params;
-    const escrow = await escrow.findById(escrowId);
-    if (!escrow) return res.status(404).json({ message: "Escrow not found" });
-
-    escrow.status = "released";
-    await escrow.save();
-
-    // Notify seller of release
-    io.to(escrow.seller.toString()).emit("escrow_update", {
-      message: "Funds have been released to your account",
-      escrow,
-    });
-
-    await sendEmail({
-      to: escrow.seller.email,
-      subject: "Escrow Funds Released",
-      text: `Your escrow payment for product ${escrow.product} has been released.`,
-    });
-
-    res.status(200).json({ message: "Escrow released successfully", escrow });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-
-import Escrow from "../models/escrow.js";
-import Commission from "../models/Commission.js";
-import User from "../models/User.js";
-import sendEmail from "../utils/sendEmail.js";
-import { io } from "../utils/socket.js";
-
-// 🧾 Buyer confirms receipt → release funds to seller
-export const buyerConfirmDelivery = async (req, res) => {
-  try {
-    const { escrowId } = req.params;
-    const buyerId = req.user._id;
-
-    const escrow = await Escrow.findById(escrowId).populate("seller buyer product");
-    if (!escrow) return res.status(404).json({ message: "Escrow not found" });
-
-    // Ensure correct buyer
-    if (escrow.buyer._id.toString() !== buyerId.toString()) {
-      return res.status(403).json({ message: "Unauthorized: You are not the buyer" });
+    const data = verifyRes.data.data;
+    if (data.status !== "success") {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "Payment verification failed" });
     }
 
-    // Ensure status is valid
-    if (escrow.status !== "in_escrow") {
-      return res.status(400).json({ message: "Escrow not ready for release" });
+    const payment = await Payment.findOneAndUpdate(
+      { reference },
+      { status: "in_escrow" },
+      { new: true, session }
+    );
+
+    if (!payment) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: "Payment not found" });
     }
 
-    // 🧮 Calculate commission
-    const category = escrow.product.category || "global";
-    const commissionRate = await Commission.findOne({ category }) || await Commission.findOne({ category: "global" });
-    const rate = commissionRate ? commissionRate.rate : 0;
+    const escrow = await Escrow.create(
+      [
+        {
+          buyer: payment.buyer,
+          seller: payment.seller,
+          product: payment.productId,
+          amount: payment.amount,
+          reference: payment.reference,
+          status: "in_escrow",
+        },
+      ],
+      { session }
+    );
 
-    const commission = (escrow.amount * rate) / 100;
-    const payoutAmount = escrow.amount - commission;
+    await session.commitTransaction();
+    session.endSession();
 
-    // 💰 Update escrow
-    escrow.status = "released";
-    escrow.releasedAt = new Date();
-    escrow.commission = commission;
-    escrow.payoutAmount = payoutAmount;
-    await escrow.save();
-
-    // 💳 Update seller balance
-    const seller = await User.findById(escrow.seller._id);
-    seller.walletBalance = (seller.walletBalance || 0) + payoutAmount;
-    await seller.save();
-
-    // 🔔 Notify seller
-    io.to(seller._id.toString()).emit("escrow_update", {
-      message: `Funds released for product ${escrow.product.name}.`,
-      escrow,
-    });
-
-    await sendEmail({
-      to: seller.email,
-      subject: "Escrow Released",
-      text: `Funds for product "${escrow.product.name}" have been released. Amount credited: ₦${payoutAmount.toFixed(2)}.`,
-    });
-
-    res.status(200).json({
-      message: "Funds released successfully",
-      escrow,
-      payoutAmount,
-      commission,
-    });
+    res.status(200).json({ success: true, escrow: escrow[0] });
   } catch (error) {
-    console.error("Buyer confirm delivery error:", error);
-    res.status(500).json({ message: "Server error" });
+    await session.abortTransaction();
+    session.endSession();
+    console.error("Verification error:", error);
+    res.status(500).json({ message: "Payment verification error" });
   }
 };
 
-
-import mongoose from "mongoose";
-import Escrow from "../models/Escrow.js";
-import Commission from "../models/Commission.js";
-import User from "../models/User.js";
-import sendEmail from "../utils/sendEmail.js";
-import { io } from "../utils/socket.js";
-
+// 🧾 Buyer Confirms Delivery → Release Funds
 export const buyerConfirmDelivery = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -213,91 +120,72 @@ export const buyerConfirmDelivery = async (req, res) => {
     const { escrowId } = req.params;
     const buyerId = req.user._id;
 
-    const escrow = await Escrow.findById(escrowId).populate("product").session(session);
-    if (!escrow) {
-      await session.abortTransaction(); session.endSession();
-      return res.status(404).json({ message: "Escrow not found" });
-    }
-    if (escrow.buyer.toString() !== buyerId.toString()) {
-      await session.abortTransaction(); session.endSession();
-      return res.status(403).json({ message: "Unauthorized" });
-    }
-    if (escrow.status !== "in_escrow") {
-      await session.abortTransaction(); session.endSession();
+    const escrow = await Escrow.findById(escrowId)
+      .populate("product seller")
+      .session(session);
+
+    if (!escrow)
+      return res.status(404).json({ message: "Escrow record not found" });
+    if (escrow.buyer.toString() !== buyerId.toString())
+      return res.status(403).json({ message: "Unauthorized buyer" });
+    if (escrow.status !== "in_escrow")
       return res.status(400).json({ message: "Escrow not ready for release" });
-    }
 
     const commissionDoc = await Commission.findOne().session(session);
-    let rate = commissionDoc?.globalRate ?? 5;
-    const categoryRate = commissionDoc?.categoryRates?.find(c => c.category === escrow.product?.category);
-    if (categoryRate) rate = categoryRate.rate;
+    const categoryRate = commissionDoc?.categoryRates?.find(
+      (r) => r.category === escrow.product.category
+    );
+    const rate = categoryRate?.rate ?? commissionDoc?.globalRate ?? 5;
 
     const commission = (escrow.amount * rate) / 100;
-    const payoutAmount = escrow.amount - commission;
+    const payout = escrow.amount - commission;
 
-    // update escrow
     escrow.status = "released";
-    escrow.commission = commission;
-    escrow.payoutAmount = payoutAmount;
     escrow.releasedAt = new Date();
+    escrow.commission = commission;
+    escrow.payoutAmount = payout;
     await escrow.save({ session });
 
-    // update seller wallet atomically
     const seller = await User.findById(escrow.seller).session(session);
-    seller.walletBalance = (seller.walletBalance || 0) + payoutAmount;
+    seller.walletBalance = (seller.walletBalance || 0) + payout;
     await seller.save({ session });
 
     await session.commitTransaction();
     session.endSession();
 
-    // notify outside session (no DB writes)
-    io.to(seller._id.toString()).emit("escrow_update", { message: "Funds released", escrow });
-    await sendEmail({ to: seller.email, subject: "Escrow Released", text: `₦${payoutAmount} released.` });
+    // 🔔 Notify seller (outside transaction)
+    io.to(seller._id.toString()).emit("escrow_update", {
+      message: `Funds released for ${escrow.product.name}`,
+      escrow,
+    });
 
-    res.json({ message: "Released", escrow, payoutAmount, commission });
+    await sendEmail({
+      to: seller.email,
+      subject: "Escrow Payment Released",
+      text: `Your payment for "${escrow.product.name}" has been released. ₦${payout.toFixed(
+        2
+      )} credited.`,
+    });
+
+    res.status(200).json({ success: true, escrow, payout, commission });
   } catch (err) {
     await session.abortTransaction();
     session.endSession();
-    console.error("Buyer confirm delivery error:", err);
+    console.error("Release error:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-const express = require("express");
-const router = express.Router();
-const axios = require("axios");
-const Order = require("../models/Order"); // your order model
-
-// ✅ Verify Paystack payment
-router.get("/verify/:reference", async (req, res) => {
-  const { reference } = req.params;
-
+// 💰 Seller Payout History
+export const getSellerPayouts = async (req, res) => {
   try {
-    const response = await axios.get(
-      `https://api.paystack.co/transaction/verify/${reference}`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-        },
-      }
-    );
-
-    const { status, data } = response.data;
-    if (status && data.status === "success") {
-      // Update order status
-      const order = await Order.findOneAndUpdate(
-        { reference },
-        { paymentStatus: "paid", orderStatus: "processing" },
-        { new: true }
-      ).populate("buyer seller products");
-
-      return res.json({ success: true, order });
-    } else {
-      res.status(400).json({ success: false, message: "Payment not verified" });
-    }
+    const sellerId = req.user._id;
+    const payouts = await Escrow.find({ seller: sellerId }).sort({
+      createdAt: -1,
+    });
+    res.json(payouts);
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("Get payouts error:", error);
+    res.status(500).json({ message: "Error fetching payouts" });
   }
-});
-
-module.exports = router;
+};

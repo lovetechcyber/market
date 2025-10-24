@@ -1,10 +1,17 @@
-import Dispute from "../models/disput.js";
-import Escrow from "../models/escrow.js";
-import Payment from "../models/payment.js";
+import mongoose from "mongoose";
+import Dispute from "../models/Dispute.js";
+import Escrow from "../models/Escrow.js";
+import Payment from "../models/Payment.js";
+import User from "../models/User.js";
 import sendEmail from "../utils/sendEmail.js";
 import { refundCharge } from "../utils/paystack.js";
 import { io } from "../utils/socket.js";
 
+/**
+ * @desc   Create a dispute (by user)
+ * @route  POST /api/dispute
+ * @access Private
+ */
 export const createDispute = async (req, res) => {
   try {
     const { escrowId, reason, evidence } = req.body;
@@ -16,102 +23,60 @@ export const createDispute = async (req, res) => {
       status: "open",
     });
 
-    // notify admin
-    io.emit("admin_notification", { message: "New dispute", dispute });
-    res.status(201).json({ dispute });
+    io.emit("admin_notification", { message: "New dispute submitted", dispute });
+    res.status(201).json({ success: true, dispute });
   } catch (err) {
+    console.error("createDispute error:", err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// Admin resolves and issues refund
-export const resolveDisputeRefund = async (req, res) => {
-  try {
-    const { disputeId } = req.params;
-    const { action, note } = req.body; // action: 'refund' or 'reject'
-    const dispute = await Dispute.findById(disputeId).populate({ path: "escrow", populate: ["buyer","seller"] });
-    if (!dispute) return res.status(404).json({ message: "Dispute not found" });
-
-    dispute.status = action === "refund" ? "refunded" : "rejected";
-    dispute.resolutionNote = note;
-    dispute.resolvedAt = new Date();
-
-    if (action === "refund") {
-      // perform refund via Paystack using the original transaction ID (escrow.transactionId)
-      const escrow = dispute.escrow;
-      // call refund endpoint
-      try {
-        const refundRes = await refundCharge(escrow.transactionId);
-        // mark escrow declined/refunded
-        escrow.status = "declined";
-        await escrow.save();
-
-        // Update any Payment entries too (if Payment model used)
-        await Payment.findOneAndUpdate({ transactionId: escrow.transactionId }, { status: "refunded" });
-
-        // return funds to buyer wallet if you maintain buyer wallet
-        const buyer = escrow.buyer;
-        // optional: credit buyer.walletBalance += escrow.amount
-
-        await sendEmail({ to: buyer.email, subject: "Refund processed", text: `A refund for your order ${escrow._id} was processed.` });
-        io.to(buyer._id.toString()).emit("refund_update", { message: "Refund processed", dispute, refundRes });
-      } catch (err) {
-        console.error("Refund error:", err);
-        return res.status(500).json({ message: "Refund failed", error: err.message });
-      }
-    } else {
-      // rejected: notify buyer and seller
-      await sendEmail({ to: dispute.raisedBy.email, subject: "Dispute rejected", text: note || "Your dispute was rejected." });
-      io.to(dispute.raisedBy._id.toString()).emit("dispute_update", { message: "Dispute rejected", dispute });
-    }
-
-    await dispute.save();
-    res.json({ message: "Dispute resolved", dispute });
-
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
-};
-
-
-import mongoose from "mongoose";
-import Dispute from "../models/Dispute.js";
-import Escrow from "../models/Escrow.js";
-import WalletWithdrawal from "../models/WalletWithdrawal.js";
-import Payment from "../models/Payment.js";
-import sendEmail from "../utils/sendEmail.js";
-import { refundCharge } from "../utils/paystack.js";
-import { io } from "../utils/socket.js";
-
+/**
+ * @desc   Resolve a dispute (admin)
+ * @route  POST /api/dispute/resolve/:disputeId
+ * @access Admin
+ */
 export const resolveDisputeRefund = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
+
   try {
     const { disputeId } = req.params;
-    const { action, note } = req.body;
-    const dispute = await Dispute.findById(disputeId).populate({ path: "escrow", populate: ["buyer","seller"] }).session(session);
+    const { action, note } = req.body; // 'refund' or 'reject'
+
+    const dispute = await Dispute.findById(disputeId)
+      .populate({ path: "escrow", populate: ["buyer", "seller"] })
+      .session(session);
+
     if (!dispute) {
-      await session.abortTransaction(); session.endSession();
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ message: "Dispute not found" });
     }
 
+    // Update dispute status
     dispute.status = action === "refund" ? "refunded" : "rejected";
-    dispute.resolutionNote = note;
+    dispute.resolutionNote = note || "";
     dispute.resolvedAt = new Date();
     await dispute.save({ session });
 
+    const escrow = dispute.escrow;
+
     if (action === "refund") {
-      const escrow = dispute.escrow;
-      // call Paystack refund (external)
+      // Refund via Paystack
       const refundRes = await refundCharge(escrow.transactionId);
 
-      // update escrow & payment records in transaction
+      // Update escrow and payment status
       escrow.status = "declined";
       await escrow.save({ session });
 
-      await Payment.findOneAndUpdate({ transactionId: escrow.transactionId }, { status: "refunded" }, { session });
+      await Payment.findOneAndUpdate(
+        { transactionId: escrow.transactionId },
+        { status: "refunded" },
+        { session }
+      );
 
-      // Optionally credit buyer wallet (if you maintain wallet system)
+      // Credit buyer wallet
       const buyer = await User.findById(escrow.buyer).session(session);
       buyer.walletBalance = (buyer.walletBalance || 0) + escrow.amount;
       await buyer.save({ session });
@@ -119,20 +84,36 @@ export const resolveDisputeRefund = async (req, res) => {
       await session.commitTransaction();
       session.endSession();
 
-      // notify after commit
-      io.to(buyer._id.toString()).emit("refund_update", { message: "Refund processed", dispute });
-      await sendEmail({ to: buyer.email, subject: "Refund issued", text: `A refund of ₦${escrow.amount} was processed.` });
+      // Notify buyer
+      io.to(buyer._id.toString()).emit("refund_update", {
+        message: "Refund processed successfully",
+        dispute,
+      });
+      await sendEmail({
+        to: buyer.email,
+        subject: "Refund issued",
+        text: `A refund of ₦${escrow.amount} has been issued for your order ${escrow._id}.`,
+      });
 
-      res.json({ message: "Refund processed", refundRes, dispute });
-    } else {
-      await session.commitTransaction();
-      session.endSession();
-
-      await sendEmail({ to: dispute.raisedBy.email, subject: "Dispute rejected", text: note || "Your dispute was rejected." });
-      io.to(dispute.raisedBy._id.toString()).emit("dispute_update", { message: "Dispute rejected", dispute });
-
-      res.json({ message: "Dispute rejected", dispute });
+      return res.json({ message: "Refund processed successfully", refundRes, dispute });
     }
+
+    // Action: reject
+    await session.commitTransaction();
+    session.endSession();
+
+    await sendEmail({
+      to: dispute.raisedBy.email,
+      subject: "Dispute Rejected",
+      text: note || "Your dispute has been reviewed and rejected.",
+    });
+
+    io.to(dispute.raisedBy._id.toString()).emit("dispute_update", {
+      message: "Dispute rejected",
+      dispute,
+    });
+
+    res.json({ message: "Dispute rejected successfully", dispute });
   } catch (err) {
     await session.abortTransaction();
     session.endSession();

@@ -4,20 +4,38 @@ import {
   verifyEscrowPayment,
   releasePayment,
   getSellerPayouts,
-} from "../controller/payment.js";
+  buyerConfirmDelivery,
+} from "../controller/payment.js"; // ✅ Unified import path
 import { protect } from "../middleware/authMiddleware.js";
-import { handlePaystackWebhook } from "../controllers/webhook.js";
+import { handlePaystackWebhook } from "../controller/webhook.js"; // ✅ fixed plural “controllers” typo
 
 const router = express.Router();
 
-// ⚠️ Webhook should not require authentication
-router.post("/webhook", express.raw({ type: "application/json" }), handlePaystackWebhook);
+/**
+ * ✅ PAYMENTS ROUTES
+ * Includes escrow, verification, payout, and buyer confirmation.
+ */
 
+// ⚠️ Webhook must bypass auth — used by Paystack server
+router.post(
+  "/webhook",
+  express.raw({ type: "application/json" }),
+  handlePaystackWebhook
+);
+
+// 💳 Initiate payment (escrow creation)
 router.post("/initiate", protect, initiatePayment);
+
+// 🔍 Verify Paystack transaction
 router.get("/verify/:reference", protect, verifyEscrowPayment);
-router.post("/release", protect, releasePayment);
-router.get("/seller-payouts", protect, getSellerPayouts);
-// Buyer confirms delivery to release funds
+
+// 💰 Buyer manually confirms delivery → funds released to seller
 router.post("/confirm-delivery/:escrowId", protect, buyerConfirmDelivery);
+
+// 🧾 Admin or system-triggered escrow release (optional manual override)
+router.post("/release", protect, releasePayment);
+
+// 💸 Seller can view payout records / wallet transactions
+router.get("/seller-payouts", protect, getSellerPayouts);
 
 export default router;

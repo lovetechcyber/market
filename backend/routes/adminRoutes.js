@@ -3,69 +3,53 @@ import {
   getCommission,
   updateGlobalCommission,
   getEscrowSummary,
-   getEscrowSummary, updateEscrowStatus,
-   getUsers,
-  suspendUser,
-  getProducts,
-  deleteProduct,
+  updateEscrowStatus,
   getAllUsers,
-  suspendUser,
+  toggleUserSuspend,
   deleteUser,
   getAllProducts,
   updateProductStatus,
   deleteProduct,
   getAllOrders,
   updateOrderStatus,
-   getAllReports,
+  getAllReports,
   getAllTickets,
-  getCommission,
-  updateCommission
-} from "../controller/admin.js";
-import { adminProtect } from "../middleware/authMiddleware.js";
+} from "../controllers/admin.js";
+
 import { getAnalytics } from "../controllers/analyticsController.js";
 import { protect, adminOnly } from "../middleware/authMiddleware.js";
 
-
 const router = express.Router();
 
-router.get("/commission", adminProtect, getCommission);
-router.post("/commission/global", adminProtect, updateGlobalCommission);
-router.get("/escrow-summary", getEscrowSummary);
-router.put("/escrow/:escrowId", updateEscrowStatus);
-
-// Users
-router.get("/users", protect, adminOnly, getUsers);
-router.put("/users/suspend/:id", protect, adminOnly, suspendUser);
-
-// Reports & Tickets
-router.get("/reports", getAllReports);
-router.get("/tickets", getAllTickets);
-
-// Products
-router.get("/products", protect, adminOnly, getProducts);
-router.delete("/products/:id", protect, adminOnly, deleteProduct);
-// Users
-router.get("/users", getAllUsers);
-router.put("/users/suspend/:id", suspendUser);
-router.delete("/users/:id", deleteUser);
-router.put("/unsuspend/:userId", verifyAdmin, adminController.unsuspendUser);
-
-// Products
-router.get("/products", getAllProducts);
-router.put("/products/:id/status", updateProductStatus);
-router.delete("/products/:id", deleteProduct);
-
-// Orders
-router.get("/orders", getAllOrders);
-router.put("/orders/:id/status", updateOrderStatus)
-
-// Commission
+// 🔹 Commission Routes
 router.get("/commission", protect, adminOnly, getCommission);
-router.put("/commission", protect, adminOnly, updateCommission);
+router.put("/commission", protect, adminOnly, updateGlobalCommission);
+router.post("/commission/global", protect, adminOnly, updateGlobalCommission);
 
-// Analytics
+// 🔹 Escrow Routes
+router.get("/escrow-summary", protect, adminOnly, getEscrowSummary);
+router.put("/escrow/:escrowId", protect, adminOnly, updateEscrowStatus);
+
+// 🔹 User Management
+router.get("/users", protect, adminOnly, getAllUsers);
+router.put("/users/suspend/:id", protect, adminOnly, toggleUserSuspend);
+router.put("/users/unsuspend/:id", protect, adminOnly, toggleUserSuspend);
+router.delete("/users/:id", protect, adminOnly, deleteUser);
+
+// 🔹 Product Management
+router.get("/products", protect, adminOnly, getAllProducts);
+router.put("/products/:id/status", protect, adminOnly, updateProductStatus);
+router.delete("/products/:id", protect, adminOnly, deleteProduct);
+
+// 🔹 Order Management
+router.get("/orders", protect, adminOnly, getAllOrders);
+router.put("/orders/:id/status", protect, adminOnly, updateOrderStatus);
+
+// 🔹 Reports & Support
+router.get("/reports", protect, adminOnly, getAllReports);
+router.get("/tickets", protect, adminOnly, getAllTickets);
+
+// 🔹 Analytics
 router.get("/analytics", protect, adminOnly, getAnalytics);
 
 export default router;
-
-

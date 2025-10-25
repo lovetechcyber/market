@@ -1,13 +1,12 @@
 import express from "express";
 import {
-  initiatePayment,
+  initiateEscrowPayment,
   verifyEscrowPayment,
-  releasePayment,
   getSellerPayouts,
   buyerConfirmDelivery,
-} from "../controller/payment.js"; // ✅ Unified import path
+} from "../controllers/payment.js"; // ✅ Unified import path
 import { protect } from "../middleware/authMiddleware.js";
-import { handlePaystackWebhook } from "../controller/webhook.js"; // ✅ fixed plural “controllers” typo
+import { handlePaystackWebhook } from "../controllers/webhook.js"; // ✅ fixed plural “controllers” typo
 
 const router = express.Router();
 
@@ -24,7 +23,7 @@ router.post(
 );
 
 // 💳 Initiate payment (escrow creation)
-router.post("/initiate", protect, initiatePayment);
+router.post("/initiate", protect, initiateEscrowPayment);
 
 // 🔍 Verify Paystack transaction
 router.get("/verify/:reference", protect, verifyEscrowPayment);
@@ -33,7 +32,7 @@ router.get("/verify/:reference", protect, verifyEscrowPayment);
 router.post("/confirm-delivery/:escrowId", protect, buyerConfirmDelivery);
 
 // 🧾 Admin or system-triggered escrow release (optional manual override)
-router.post("/release", protect, releasePayment);
+
 
 // 💸 Seller can view payout records / wallet transactions
 router.get("/seller-payouts", protect, getSellerPayouts);

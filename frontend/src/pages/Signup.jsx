@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 
@@ -14,11 +14,54 @@ export default function Signup() {
     localGovernment: "",
     town: "",
   });
+
+  const [states, setStates] = useState([]);
+  const [lgas, setLgas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  // Fetch all Nigerian states on mount
+  useEffect(() => {
+    const fetchStates = async () => {
+      try {
+        const res = await fetch("https://nigerian-states-api.onrender.com/api/states");
+        const data = await res.json();
+        setStates(data.map((item) => item.name));
+      } catch (err) {
+        console.error("Error fetching states:", err);
+      }
+    };
+    fetchStates();
+  }, []);
+
+  // Fetch LGAs when state changes
+  useEffect(() => {
+    const fetchLgas = async () => {
+      if (!form.state) return;
+      try {
+        const res = await fetch(`https://nigerian-states-api.onrender.com/api/state/${form.state}`);
+        const data = await res.json();
+        setLgas(data.lgas || []);
+      } catch (err) {
+        console.error("Error fetching LGAs:", err);
+      }
+    };
+    fetchLgas();
+  }, [form.state]);
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    // Reset dependent dropdowns when parent changes
+    if (name === "state") {
+      setForm({ ...form, state: value, localGovernment: "", town: "" });
+    } else if (name === "localGovernment") {
+      setForm({ ...form, localGovernment: value, town: "" });
+    } else {
+      setForm({ ...form, [name]: value });
+    }
   };
 
   const validatePassword = (password) => {
@@ -42,7 +85,7 @@ export default function Signup() {
 
     try {
       setLoading(true);
-      const res = await api.post("/auth/signup", {
+      await api.post("/auth/signup", {
         fullName: form.fullName,
         email: form.email,
         password: form.password,
@@ -55,7 +98,7 @@ export default function Signup() {
         },
       });
       alert("Signup successful!");
-      navigate("/login");
+      navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Signup failed");
     } finally {
@@ -64,7 +107,7 @@ export default function Signup() {
   };
 
   return (
-    <div className="min-h-screen flex justify-center items-center bg-gray-100 p-4">
+    <div className="min-h-screen flex justify-center items-center bg-gray-100 p-4 mt-10">
       <div className="bg-white shadow-lg rounded-2xl p-8 w-full max-w-lg">
         <h2 className="text-2xl font-bold text-center mb-6">Create Account</h2>
 
@@ -103,25 +146,42 @@ export default function Signup() {
             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
           />
 
+          {/* Dynamic Dropdowns */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <input
-              type="text"
+            {/* State */}
+            <select
               name="state"
-              placeholder="State"
               value={form.state}
               onChange={handleChange}
               required
               className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-            <input
-              type="text"
+            >
+              <option value="">Select State</option>
+              {states.map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </select>
+
+            {/* LGA */}
+            <select
               name="localGovernment"
-              placeholder="Local Government"
               value={form.localGovernment}
               onChange={handleChange}
               required
+              disabled={!form.state}
               className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
+            >
+              <option value="">Select LGA</option>
+              {lgas.map((lga) => (
+                <option key={lga} value={lga}>
+                  {lga}
+                </option>
+              ))}
+            </select>
+
+            {/* Town / City */}
             <input
               type="text"
               name="town"
@@ -129,29 +189,48 @@ export default function Signup() {
               value={form.town}
               onChange={handleChange}
               required
+              disabled={!form.localGovernment}
               className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-          />
+          {/* Password Field */}
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              name="password"
+              placeholder="Password"
+              value={form.password}
+              onChange={handleChange}
+              required
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            <span
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-3 cursor-pointer text-gray-500 hover:text-blue-600"
+            >
+              {showPassword ? "🙈" : "👁️"}
+            </span>
+          </div>
 
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm Password"
-            value={form.confirmPassword}
-            onChange={handleChange}
-            required
-            className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-          />
+          {/* Confirm Password Field */}
+          <div className="relative">
+            <input
+              type={showConfirm ? "text" : "password"}
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              value={form.confirmPassword}
+              onChange={handleChange}
+              required
+              className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+            <span
+              onClick={() => setShowConfirm(!showConfirm)}
+              className="absolute right-3 top-3 cursor-pointer text-gray-500 hover:text-blue-600"
+            >
+              {showConfirm ? "🙈" : "👁️"}
+            </span>
+          </div>
 
           <button
             type="submit"

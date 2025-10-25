@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { signupSchema } from "./authValidator.js";
+import { protect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -25,13 +26,21 @@ let refreshTokens = [];
 // SIGNUP
 router.post("/signup", async (req, res) => {
   try {
+    console.log("🟢 Incoming signup data:", req.body); // Log the incoming request
+
     const { error } = signupSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    if (error) {
+      console.log("❌ Validation failed:", error.details[0].message);
+      return res.status(400).json({ message: error.details[0].message });
+    }
 
     const { fullName, email, password, mobileNumber, location } = req.body;
 
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "Email already exists" });
+    if (existingUser) {
+      console.log("⚠️ Email already exists:", email);
+      return res.status(400).json({ message: "Email already exists" });
+    }
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -43,11 +52,14 @@ router.post("/signup", async (req, res) => {
       location,
     });
 
+    console.log("✅ User created:", user._id);
     res.status(201).json({ message: "User created successfully", user });
   } catch (error) {
+    console.error("🔥 Signup server error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
+
 
 /**
  * @route POST /api/auth/login
@@ -111,7 +123,7 @@ router.post("/logout", (req, res) => {
 });
 
 // Toggle favorite
-router.post("/favorites/:productId", verifyToken, async (req, res) => {
+router.post("/favorites/:productId", protect, async (req, res) => {
   const { productId } = req.params;
   const user = await User.findById(req.user.id);
 

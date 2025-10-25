@@ -1,16 +1,16 @@
-const express = require('express');
+import express from "express";
 const router = express.Router();
-const Product = require('../models/Product');
-const User = require('../models/User');
-const cloudinary = require('../utils/cloudinary');
-const auth = require('../middleware/auth');
-const mongoose = require('mongoose');
+import Product from '../models/Product.js';
+import User from '../models/User.js';
+import cloudinary from '../utils/cloudinary.js';
+import { protect } from '../middleware/authMiddleware.js';
+import mongoose from 'mongoose';
 
 /**
  * POST /api/products
  * Create product + upload media to Cloudinary
  */
-router.post('/', auth, async (req, res) => {
+router.post('/', protect, async (req, res) => {
   try {
     const { title, description, category, price, condition, contact } = req.body;
 
@@ -102,7 +102,7 @@ router.get('/categories', async (req, res) => {
 
 /**
  * GET /api/products/:id
- * Return product; increment view count and add to user's recentViews if authenticated
+ * Return product; increment view count and add to user's recentViews if protectenticated
  */
 router.get('/:id', authOptional, async (req, res) => {
   try {
@@ -134,7 +134,7 @@ router.get('/:id', authOptional, async (req, res) => {
  * PUT /api/products/:id
  * Edit product (only seller)
  */
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', protect, async (req, res) => {
   try {
     const { id } = req.params;
     const product = await Product.findById(id);
@@ -170,7 +170,7 @@ router.put('/:id', auth, async (req, res) => {
  * DELETE /api/products/:id
  * Delete product (only seller)
  */
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', protect, async (req, res) => {
   try {
     const { id } = req.params;
     const product = await Product.findById(id);
@@ -237,7 +237,7 @@ function authOptional(req, res, next) {
 }
 
 // routes/productRoutes.js
-router.patch("/:id/tag-sold", authMiddleware, async (req, res) => {
+router.patch("/:id/tag-sold", protect, async (req, res) => {
   try {
     const product = await Product.findByIdAndUpdate(
       req.params.id,
@@ -252,4 +252,5 @@ router.patch("/:id/tag-sold", authMiddleware, async (req, res) => {
 });
 
 
-module.exports = router;
+export default router;
+

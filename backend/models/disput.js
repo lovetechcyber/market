@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const disputeSchema = new mongoose.Schema({
+const DisputeSchema = new mongoose.Schema({
   escrow: { type: mongoose.Schema.Types.ObjectId, ref: "Escrow", required: true },
   raisedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   reason: { type: String },
@@ -10,4 +10,4 @@ const disputeSchema = new mongoose.Schema({
   resolvedAt: Date,
 }, { timestamps: true });
 
-export default mongoose.model("Dispute", disputeSchema);
+export default mongoose.model("Dispute", DisputeSchema);

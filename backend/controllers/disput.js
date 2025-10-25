@@ -1,5 +1,5 @@
 import mongoose from "mongoose";
-import Dispute from "../models/Dispute.js";
+import Dispute from "../models/disput.js";
 import Escrow from "../models/Escrow.js";
 import Payment from "../models/Payment.js";
 import User from "../models/User.js";

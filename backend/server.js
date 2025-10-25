@@ -4,6 +4,7 @@ import { Server } from "socket.io";
 import cors from "cors";
 import dotenv from "dotenv";
 import bodyParser from "body-parser";
+import mongoose from "mongoose"; // 🧩 Add this
 
 // ✅ Route Imports
 import authRoutes from "./routes/authRoutes.js";
@@ -39,10 +40,17 @@ const io = new Server(server, {
 // ✅ Initialize global socket instance
 initSocket(io);
 
-// ✅ Middleware
-app.use(cors());
 
-// ⚠️ Important: Webhook endpoint must come BEFORE express.json()
+
+// ✅ Proper CORS configuration
+app.use(
+  cors({
+    origin: "http://localhost:5173", // React frontend
+    credentials: true,               // allow cookies / headers
+  })
+);
+
+// ⚠️  express.json()
 app.post(
   "/api/payments/webhook",
   bodyParser.raw({ type: "application/json" }),
@@ -91,6 +99,24 @@ io.on("connection", (socket) => {
   });
 });
 
-// ✅ Server Listen
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+// ✅ MongoDB Connection
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log("✅ MongoDB Connected Successfully");
+
+    // Start server only after DB connection
+    const PORT = process.env.PORT || 5000;
+    server.listen(PORT, () =>
+      console.log(`🚀 Server running on port ${PORT}`)
+    );
+  } catch (error) {
+    console.error("❌ MongoDB connection failed:", error.message);
+    process.exit(1);
+  }
+};
+
+connectDB();

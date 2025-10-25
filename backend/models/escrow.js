@@ -18,6 +18,9 @@ const escrowSchema = new mongoose.Schema({
   releasedAt: Date,
 });
 
-export default mongoose.model("Escrow", escrowSchema);
+const Escrow =
+  mongoose.models.Escrow || mongoose.model("Escrow", escrowSchema);
+
+export default Escrow;
 
 

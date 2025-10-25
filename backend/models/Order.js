@@ -1,50 +1,60 @@
-// models/Order.js
-const mongoose = require('mongoose');
+// backend/models/Order.js
+import mongoose from "mongoose";
 
-const orderSchema = new mongoose.Schema({
-  buyerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  sellerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  items: [
-    {
-      productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },
-      title: String,
-      price: Number,
-      quantity: Number
-    }
-  ],
-  subtotal: { type: Number, required: true },
-  shipping: { type: Number, default: 0 },
-  escrowAmount: { type: Number, required: true }, // typically equals subtotal+shipping
-  currency: { type: String, default: 'NGN' },
-
-  // payment provider references
-  paymentProvider: { type: String }, // 'paystack' | 'flutterwave' | ...
-  paymentReference: { type: String }, // provider reference
-  paymentStatus: { type: String, enum: ['pending','authorized','paid','failed'], default: 'pending' },
-
-  // escrow lifecycle
-  status: { 
-    type: String, 
-    enum: ['pending','paid','in_escrow','released','refunded','disputed','cancelled'], 
-    default: 'pending' 
+const orderItemSchema = new mongoose.Schema(
+  {
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true },
+    title: { type: String, required: true },
+    price: { type: Number, required: true, min: 0 },
+    quantity: { type: Number, required: true, min: 1 },
   },
-  escrowReleasedAt: Date,
-  escrowReleasedTxRef: String, // reference for the transfer to seller
+  { _id: false }
+);
+
+const orderSchema = new mongoose.Schema(
+  {
+    buyerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    sellerId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+
+    items: { type: [orderItemSchema], required: true },
+
+    subtotal: { type: Number, required: true, min: 0 },
+    shipping: { type: Number, default: 0, min: 0 },
+    escrowAmount: { type: Number, required: true, min: 0 },
+    currency: { type: String, default: "NGN" },
+
+    paymentProvider: { type: String, enum: ["paystack", "flutterwave", "manual"], default: "paystack" },
+    paymentReference: { type: String },
+    paymentStatus: {
+      type: String,
+      enum: ["pending", "authorized", "paid", "failed"],
+      default: "pending",
+    },
+
+    status: {
+      type: String,
+      enum: ["pending", "paid", "in_escrow", "released", "refunded", "disputed", "cancelled"],
+      default: "pending",
+    },
+    escrowReleasedAt: Date,
+    escrowReleasedTxRef: String,
 
     orderStatus: {
-    type: String,
-    enum: ["processing", "shipped", "in_transit", "delivered", "cancelled"],
-    default: "processing",
+      type: String,
+      enum: ["processing", "shipped", "in_transit", "delivered", "cancelled"],
+      default: "processing",
+    },
+
+    dispute: {
+      isOpen: { type: Boolean, default: false },
+      reason: String,
+      openedAt: Date,
+      resolvedAt: Date,
+      resolutionNote: String,
+    },
   },
+  { timestamps: true }
+);
 
-  // timestamps and dispute notes
-  dispute: {
-    isOpen: { type: Boolean, default: false },
-    reason: String,
-    openedAt: Date,
-    resolvedAt: Date,
-    resolutionNote: String
-  }
-}, { timestamps: true });
-
-module.exports = mongoose.model('Order', orderSchema);
+const Order = mongoose.model("Order", orderSchema);
+export default Order;

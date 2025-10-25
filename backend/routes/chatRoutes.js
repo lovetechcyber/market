@@ -1,69 +1,92 @@
 import express from "express";
 import Chat from "../models/chat.js";
 import Product from "../models/Product.js";
-import { verifyToken } from "../middleware/auth.js";
-import { getUserChats, getChatMessagesByProduct, sendMessage } from "../controllers/chatController.js";
-
+import { protect } from "../middleware/authMiddleware.js";
+import {
+  getUserChats,
+  getChatMessagesByProduct,
+  sendMessage
+} from "../controllers/chatController.js";
 
 const router = express.Router();
 
-// Start chat with seller from product page
-router.post("/start/:productId", verifyToken, async (req, res) => {
-  const { productId } = req.params;
-  const product = await Product.findById(productId).populate("seller");
+// 🟢 Start a chat with the seller from product page
+router.post("/start/:productId", protect, async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const product = await Product.findById(productId).populate("seller");
 
-  if (!product) return res.status(404).json({ error: "Product not found" });
-  if (product.seller._id.toString() === req.user.id) {
-    return res.status(400).json({ error: "You cannot chat yourself" });
-  }
+    if (!product) return res.status(404).json({ error: "Product not found" });
 
-  let chat = await Chat.findOne({
-    product: productId,
-    sender: req.user.id,
-    receiver: product.seller._id
-  });
+    if (product.seller._id.toString() === req.user.id) {
+      return res.status(400).json({ error: "You cannot chat with yourself" });
+    }
 
-  if (!chat) {
-    chat = new Chat({
+    let chat = await Chat.findOne({
       product: productId,
       sender: req.user.id,
-      receiver: product.seller._id,
-      messages: []
+      receiver: product.seller._id
     });
-    await chat.save();
+
+    if (!chat) {
+      chat = new Chat({
+        product: productId,
+        sender: req.user.id,
+        receiver: product.seller._id,
+        messages: []
+      });
+      await chat.save();
+    }
+
+    res.json(chat);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
   }
-
-  res.json(chat);
 });
 
-// Send message
-router.post("/:chatId/message", verifyToken, async (req, res) => {
-  const { chatId } = req.params;
-  const { text } = req.body;
+// 🟢 Send message within a chat
+router.post("/:chatId/message", protect, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const { text } = req.body;
 
-  let chat = await Chat.findById(chatId);
-  if (!chat) return res.status(404).json({ error: "Chat not found" });
+    const chat = await Chat.findById(chatId);
+    if (!chat) return res.status(404).json({ error: "Chat not found" });
 
-  const newMsg = { text, sender: req.user.id };
-  chat.messages.push(newMsg);
-  await chat.save();
+    const newMsg = { text, sender: req.user.id };
+    chat.messages.push(newMsg);
+    await chat.save();
 
-  res.json(newMsg); // return the single message
+    res.json(newMsg);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to send message" });
+  }
 });
 
+// 🟢 Get chat by product ID (for returning to conversation)
+router.get("/product/:productId", protect, async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const chat = await Chat.findOne({ product: productId })
+      .populate("messages.sender", "fullName");
 
-// Get chat by product (so user can return via product ID)
-router.get("/product/:productId", verifyToken, async (req, res) => {
-  const { productId } = req.params;
-  const chat = await Chat.findOne({ product: productId }).populate("messages.sender", "fullName");
-  res.json(chat);
+    if (!chat) return res.status(404).json({ error: "Chat not found" });
+    res.json(chat);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
+// 🟢 Fetch all user chats
+router.get("/", protect, getUserChats);
 
+// 🟢 Fetch chat messages by product
+router.get("/product/:productId/messages", protect, getChatMessagesByProduct);
 
-router.get("/", authMiddleware, getUserChats);
-router.get("/product/:productId", authMiddleware, getChatMessagesByProduct);
-router.post("/:chatId/message", authMiddleware, sendMessage);
-
+// 🟢 Send message via controller (optional external handler)
+router.post("/:chatId/send", protect, sendMessage);
 
 export default router;

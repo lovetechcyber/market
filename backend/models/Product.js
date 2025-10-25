@@ -1,58 +1,70 @@
 // backend/models/Product.js
-const mongoose = require('mongoose');
+import mongoose from "mongoose";
 
-const mediaSchema = new mongoose.Schema({
-  url: String,
-  public_id: String,
-  type: { type: String, enum: ['image', 'video'], default: 'image' }
-}, { _id: false });
-
-const productSchema = new mongoose.Schema({
-  title: { type: String, required: true },
-  description: String,
-
-  category: {
-    type: String,
-    required: true,
-    enum: [
-      'Electronics',
-      'Fashion',
-      'Home & Kitchen',
-      'Health & Beauty',
-      'Sports',
-      'Automobile',
-      'Real Estate',
-      'Services',
-      'Others'
-    ]
+const mediaSchema = new mongoose.Schema(
+  {
+    url: String,
+    public_id: String,
+    type: { type: String, enum: ["image", "video"], default: "image" },
   },
+  { _id: false }
+);
 
-  price: { type: Number, required: true },
-  condition: { type: String, enum: ['new', 'used', 'refurbished'], default: 'new' },
+const productSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    description: String,
 
-  contact: { type: String, required: true }, // seller phone or WhatsApp
+    category: {
+      type: String,
+      required: true,
+      enum: [
+        "Electronics",
+        "Fashion",
+        "Home & Kitchen",
+        "Health & Beauty",
+        "Sports",
+        "Automobile",
+        "Real Estate",
+        "Services",
+        "Others",
+      ],
+    },
 
-  seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  images: [mediaSchema],
-  video: mediaSchema,
+    price: { type: Number, required: true },
+    condition: {
+      type: String,
+      enum: ["new", "used", "refurbished"],
+      default: "new",
+    },
 
-  viewsCount: { type: Number, default: 0 },
-  status: { type: String, enum: ['active', 'sold', 'pending'], default: 'active' },
-  salesCount: { type: Number, default: 0 },
+    contact: { type: String, required: true }, // seller phone or WhatsApp
 
-  // tagging fields
-  isLatest: { type: Boolean, default: false },
-  isFeatured: { type: Boolean, default: false },
+    seller: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    images: [mediaSchema],
+    video: mediaSchema,
 
-  location: {
-  state: String,
-  lga: String,
-  city: String,
-},
-tag: { type: String, enum: ["Available", "Sold"], default: "Available" },
+    viewsCount: { type: Number, default: 0 },
+    status: {
+      type: String,
+      enum: ["active", "sold", "pending"],
+      default: "active",
+    },
+    salesCount: { type: Number, default: 0 },
 
+    // tagging fields
+    isLatest: { type: Boolean, default: false },
+    isFeatured: { type: Boolean, default: false },
 
+    location: {
+      state: String,
+      lga: String,
+      city: String,
+    },
+    tag: { type: String, enum: ["Available", "Sold"], default: "Available" },
+  },
+  { timestamps: true }
+);
 
-}, { timestamps: true });
-
-module.exports = mongoose.model('Product', productSchema);
+const Product = mongoose.model("Product", productSchema);
+export default Product;

@@ -41,7 +41,7 @@ export default function Signup() {
     const fetchLgas = async () => {
       if (!form.state) return;
       try {
-        const res = await fetch(`https://nigerian-states-api.onrender.com/api/state/${form.state}`);
+        const res = await fetch(`https://nga-states-lga.onrender.com/api/states/${form.state}`);
         const data = await res.json();
         setLgas(data.lgas || []);
       } catch (err) {

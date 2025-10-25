@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import Escrow from "../models/escrow.js";
+import Escrow from "../models/Escrow.js";
 import sendEmail from "../utils/sendEmail.js";
 import { io } from "../utils/socket.js";
 

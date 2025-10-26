@@ -1,6 +1,6 @@
-import escrow from "../models/Escrow.js";
+import escrow from "../models/escrow.js";
 import WalletWithdrawal from "../models/withdrawal.js";
-import payment from "../models/Payment.js";
+import payment from "../models/payment.js";
 import Commission from "../models/Commission.js";
 
 export const getescrowSummary = async (req, res) => {

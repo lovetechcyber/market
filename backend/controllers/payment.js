@@ -1,8 +1,8 @@
 import mongoose from "mongoose";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
-import Payment from "../models/Payment.js";
-import Escrow from "../models/Escrow.js";
+import Payment from "../models/payment.js";
+import Escrow from "../models/escrow.js";
 import Order from "../models/Order.js";
 import Commission from "../models/Commission.js";
 import User from "../models/User.js";

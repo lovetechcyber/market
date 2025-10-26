@@ -45,7 +45,7 @@ initSocket(io);
 // ✅ Proper CORS configuration
 app.use(
   cors({
-    origin: "https://68fde06e3dc01cbbd39a0739--mainmarket.netlify.app/", // React frontend
+    origin: "https://mainmarket.netlify.app/", // React frontend
     credentials: true,               // allow cookies / headers
   })
 );

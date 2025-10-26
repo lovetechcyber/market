@@ -1,7 +1,7 @@
 import { useState } from "react";
 import api from "../api/axios";
 import { useParams, useNavigate } from "react-router-dom";
-import PasswordStrength from "../components/passwordStrength";
+import PasswordStrength from "../components/PasswordStrength";
 
 export default function ResetPassword() {
   const { token } = useParams();

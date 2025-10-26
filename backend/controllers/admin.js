@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import Commission from "../models/Commission.js";
-import Escrow from "../models/Escrow.js";
+import Escrow from "../models/escrow.js";
 import User from "../models/User.js";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";

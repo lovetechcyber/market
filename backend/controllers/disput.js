@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import Dispute from "../models/disput.js";
-import Escrow from "../models/Escrow.js";
-import Payment from "../models/Payment.js";
+import Escrow from "../models/escrow.js";
+import Payment from "../models/payment.js";
 import User from "../models/User.js";
 import sendEmail from "../utils/sendEmail.js";
 import { refundCharge } from "../utils/paystack.js";

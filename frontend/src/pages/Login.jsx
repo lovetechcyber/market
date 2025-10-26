@@ -14,7 +14,7 @@ export default function Login() {
       const { data } = await api.post("/auth/login", form);
       localStorage.setItem("accessToken", data.accessToken);
       api.defaults.headers.common["Authorization"] = `Bearer ${data.accessToken}`;
-      navigate("/");
+      navigate("/dashboard");
     } catch (error) {
       alert(error.response?.data?.message || "Login failed");
     }

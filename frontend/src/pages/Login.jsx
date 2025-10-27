@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../utils/axiosInstance";
+import {api, setAccessToken} from "../utils/axiosInstance";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -8,17 +8,29 @@ export default function Login() {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const { data } = await api.post("/auth/login", form);
-      localStorage.setItem("accessToken", data.accessToken);
-      api.defaults.headers.common["Authorization"] = `Bearer ${data.accessToken}`;
-      navigate("/dashboard");
-    } catch (error) {
-      alert(error.response?.data?.message || "Login failed");
-    }
-  };
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const { data } = await api.post("/auth/login", form);
+
+    // ✅ Save both access token and user info
+    setAccessToken(data.accessToken);
+    localStorage.setItem("userInfo", JSON.stringify(data.user));
+
+    // ✅ Set default Authorization header for all requests
+    api.defaults.headers.common["Authorization"] = `Bearer ${data.accessToken}`;
+
+    // ✅ Trigger navbar update (for logged-in UI)
+    window.dispatchEvent(new Event("storage"));
+
+    // ✅ Redirect user
+    navigate("/dashboard");
+  } catch (error) {
+    console.error("Login error:", error);
+    alert(error.response?.data?.message || "Login failed");
+  }
+};
+
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">

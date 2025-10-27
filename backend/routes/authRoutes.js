@@ -26,11 +26,9 @@ let refreshTokens = [];
 // SIGNUP
 router.post("/signup", async (req, res) => {
   try {
-    console.log("🟢 Incoming signup data:", req.body); // Log the incoming request
 
     const { error } = signupSchema.validate(req.body);
     if (error) {
-      console.log("❌ Validation failed:", error.details[0].message);
       return res.status(400).json({ message: error.details[0].message });
     }
 
@@ -38,7 +36,6 @@ router.post("/signup", async (req, res) => {
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      console.log("⚠️ Email already exists:", email);
       return res.status(400).json({ message: "Email already exists" });
     }
 
@@ -66,7 +63,7 @@ router.post("/signup", async (req, res) => {
  */
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
-
+  console.log("🟢 Incoming login data:", req.body); 
   try {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: "Invalid credentials" });
@@ -75,7 +72,10 @@ router.post("/login", async (req, res) => {
     if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
 
     const accessToken = generateAccessToken(user._id);
+    console.log("🟢 accesstoken data:",accessToken); // Log the incoming request
+    console.log("🟢 Incoming signup data:", user.id); // Log the incoming request
     const refreshToken = generateRefreshToken(user._id);
+    console.log("🟢 refreshtoken data:", refreshToken); // Log the incoming request
 
     refreshTokens.push(refreshToken);
 
@@ -89,12 +89,48 @@ router.post("/login", async (req, res) => {
     res.json({
       message: "Login successful",
       accessToken,
-      user: { id: user._id, name: user.name, email: user.email }
+      user: { id: user._id, fullName: user.fullName, email: user.email }
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("🔥 Login error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
+
+router.post("/logout", (req, res) => {
+  try {
+    // Clear the refresh token cookie
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // only secure in prod
+      sameSite: "strict",
+      path: "/", // must match the cookie path used during login
+    });
+
+    return res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ message: "Failed to log out" });
+  }
+});
+
+router.post("/logout", (req, res) => {
+  try {
+    // Clear the refresh token cookie
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", // only secure in prod
+      sameSite: "strict",
+      path: "/", // must match the cookie path used during login
+    });
+
+    return res.status(200).json({ message: "Logged out successfully" });
+  } catch (error) {
+    console.error("Logout error:", error);
+    res.status(500).json({ message: "Failed to log out" });
+  }
+});
+
 
 /**
  * @route POST /api/auth/refresh

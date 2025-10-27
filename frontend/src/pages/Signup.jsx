@@ -69,42 +69,60 @@ export default function Signup() {
     return regex.test(password);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
 
-    if (!validatePassword(form.password)) {
-      return setError(
-        "Password must contain at least one uppercase letter, one lowercase letter, one number, and be at least 8 characters long."
-      );
-    }
+  if (!validatePassword(form.password)) {
+    return setError(
+      "Password must contain at least one uppercase letter, one lowercase letter, one number, and be at least 8 characters long."
+    );
+  }
 
-    if (form.password !== form.confirmPassword) {
-      return setError("Passwords do not match");
-    }
+  if (form.password !== form.confirmPassword) {
+    return setError("Passwords do not match");
+  }
 
-    try {
-      setLoading(true);
-      await api.post("/auth/signup", {
-        fullName: form.fullName,
-        email: form.email,
-        password: form.password,
-        confirmPassword: form.confirmPassword,
-        mobileNumber: form.mobileNumber,
-        location: {
-          state: form.state,
-          localGovernment: form.localGovernment,
-          town: form.town,
-        },
-      });
-      alert("Signup successful!");
-      navigate("/dashboard");
-    } catch (err) {
-      setError(err.response?.data?.message || "Signup failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    const { data } = await api.post("/auth/signup", {
+      fullName: form.fullName,
+      email: form.email,
+      password: form.password,
+      confirmPassword: form.confirmPassword,
+      mobileNumber: form.mobileNumber,
+      location: {
+        state: form.state,
+        localGovernment: form.localGovernment,
+        town: form.town,
+      },
+    });
+
+    // ✅ Automatically log user in after signup
+    const loginRes = await api.post("/auth/login", {
+      email: form.email,
+      password: form.password,
+    });
+
+    // ✅ Save token and user info
+    localStorage.setItem("accessToken", loginRes.data.accessToken);
+    localStorage.setItem("userInfo", JSON.stringify(loginRes.data.user));
+
+    // ✅ Set default header for future API calls
+    api.defaults.headers.common["Authorization"] = `Bearer ${loginRes.data.accessToken}`;
+
+    // ✅ Trigger Navbar re-render
+    window.dispatchEvent(new Event("storage"));
+
+    alert("Signup successful!");
+    navigate("/dashboard");
+  } catch (err) {
+    setError(err.response?.data?.message || "Signup failed");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-100 p-4 mt-10">

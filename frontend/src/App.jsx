@@ -22,7 +22,19 @@ import Navbar from "./pages/Navbar";
 import Checkout from "./pages/Checkout";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import TrackOrder from "./pages/TrackOrder";
+import { removeAccessToken, getAccessToken } from "./utils/axiosInstance"; // Add this line, adjust path as needed
 
+const token = getAccessToken();
+if (token) {
+  try {
+    const decoded = JSON.parse(atob(token.split(".")[1]));
+    if (decoded.exp * 1000 < Date.now()) {
+      removeAccessToken();
+    }
+  } catch (e) {
+    removeAccessToken();
+  }
+}
 function App() {
   return (
    

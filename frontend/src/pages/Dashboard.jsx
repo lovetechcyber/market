@@ -1,5 +1,5 @@
 // src/pages/ClientDashboard.jsx
-import React, { useEffect, useState, useContext, useRef } from "react";
+import { useEffect, useState, useContext, useRef } from "react";
 import axios from "axios";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [active, setActive] = useState("overview");
   const [searchParams] = useSearchParams();
   const [reportPrefill, setReportPrefill] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const isReport = searchParams.get("report");
@@ -31,17 +32,46 @@ export default function Dashboard() {
     }
   }, [searchParams]);
 
-  return (
-    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 pt-20">
-      <Sidebar active={active} setActive={setActive} />
-      <main className="flex-1 ml-64 p-6">
+return (
+    <div className="flex min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-100 pt-16 md:pt-20 relative">
+      {/* Sidebar (mobile + desktop) */}
+      <div
+        className={`fixed inset-y-0 left-0 z-40 transform bg-white dark:bg-gray-800 w-64 transition-transform duration-300 ease-in-out
+        ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"} 
+        md:translate-x-0 md:static md:w-64`}
+      >
+        <Sidebar active={active} setActive={setActive} />
+      </div>
+
+      {/* Overlay for mobile */}
+      {isSidebarOpen && (
+        <div
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-black bg-opacity-40 z-30 md:hidden"
+        />
+      )}
+
+      {/* Main content */}
+      <main className="flex-1 p-4 md:p-6 md:ml-64 transition-all duration-300">
+        {/* Top bar for mobile only */}
+        <div className="flex items-center justify-between mb-4 md:hidden">
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="p-2 rounded-md bg-gray-200 dark:bg-gray-700 md:hidden"
+          >
+            <Menu className="w-6 h-6 text-gray-800 dark:text-gray-100 md:hidden" />
+          </button>
+          <h1 className="text-lg font-semibold capitalize">{active}</h1>
+        </div>
+
+        {/* Dynamic pages */}
         {active === "overview" && <Overview />}
         {active === "myItems" && <MyItems />}
         {active === "orders" && <Orders />}
         {active === "favorites" && <Favorites />}
         {active === "history" && <HistoryPage />}
         {active === "balance" && <Balance />}
-        {active === "report" && <ReportForm prefill={reportPrefill} />}
+        {active === "report" && <ReportForm />}
         {active === "settings" && <SettingsPage />}
         {active === "profile" && <Profile />}
       </main>
@@ -68,7 +98,7 @@ function Sidebar({ active, setActive }) {
       <div className="p-6 text-2xl font-bold text-indigo-600 border-b dark:border-gray-700">
         <div className="flex items-center justify-between">
           <span>User Dashboard</span>
-          <Menu className="hidden md:block" />
+          <Menu className="hidden md:hidden" />
         </div>
       </div>
 
@@ -99,21 +129,38 @@ function Sidebar({ active, setActive }) {
 /* ---------------- Overview ---------------- */
 function Overview() {
   const [stats, setStats] = useState({ posted: 0, sold: 0, balance: 0 });
+
   useEffect(() => {
     let mounted = true;
+
     (async () => {
       try {
-        const res = await axios.get("/api/user/dashboard"); // optional endpoint that returns summary
-        if (!mounted) return;
-        if (res.data) setStats({
-          posted: res.data.itemsPosted ?? 0,
-          sold: res.data.sold ?? 0,
-          balance: res.data.balance ?? 0,
+        const userInfo = JSON.parse(localStorage.getItem("userInfo"));
+        if (!userInfo?.accessToken) return;
+
+        const API_URL =
+          import.meta.env.MODE === "development"
+            ? "http://localhost:5000"
+            : "https://market-e50k.onrender.com";
+
+        const res = await axios.get(`${API_URL}/user/dashboard`, {
+          headers: {
+            Authorization: `Bearer ${userInfo.accessToken}`,
+          },
         });
+
+        if (mounted && res.data) {
+          setStats({
+            posted: res.data.itemsPosted ?? 0,
+            sold: res.data.sold ?? 0,
+            balance: res.data.balance ?? 0,
+          });
+        }
       } catch (err) {
-        // fallback / ignore
+        console.error("Dashboard stats fetch error:", err);
       }
     })();
+
     return () => (mounted = false);
   }, []);
 
@@ -122,12 +169,17 @@ function Overview() {
       <h1 className="text-2xl font-bold mb-6">Welcome back 👋</h1>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <StatCard title="Items Posted" value={stats.posted} />
-        <StatCard title="Sold" value={stats.sold} />
-        <StatCard title="Balance" value={`₦${Number(stats.balance).toLocaleString()}`} />
+        <StatCard title="Sold Items" value={stats.sold} />
+        <StatCard
+          title="Balance"
+          value={`₦${Number(stats.balance).toLocaleString()}`}
+        />
       </div>
     </div>
   );
 }
+
+
 
 /* ---------------- MyItems ---------------- */
 function MyItems() {

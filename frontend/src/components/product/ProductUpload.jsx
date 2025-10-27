@@ -1,5 +1,7 @@
+/* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
 import api, { authHeader } from "../../api/axios";
+import axios from "axios";
 
 export default function ProductUpload({ token, onCreated }) {
   const [title, setTitle] = useState("");
@@ -71,58 +73,64 @@ export default function ProductUpload({ token, onCreated }) {
     setError("");
   };
 
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (!title || !price || !category || !contact || !state || !lga || !city) {
-      setError("All fields including location and contact are required");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    try {
-      const form = new FormData();
-      form.append("title", title);
-      form.append("description", description);
-      form.append("category", category);
-      form.append("price", price);
-      form.append("condition", condition);
-      form.append("contact", contact);
-      form.append("state", state);
-      form.append("lga", lga);
-      form.append("city", city);
-
-      images.forEach((file) => form.append("images", file));
-      if (video) form.append("video", video);
-
-      const resp = await api.post("/products", form, {
-        headers: {
-          ...authHeader(token).headers,
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      setLoading(false);
-      onCreated && onCreated(resp.data.product);
-
-      // Reset form
-      setTitle("");
-      setDescription("");
-      setCategory("");
-      setContact("");
-      setImages([]);
-      setVideo(null);
-      setPrice("");
-      setCondition("new");
-      setState("");
-      setLga("");
-      setCity("");
-    } catch (err) {
-      console.error(err);
-      setError(err?.response?.data?.message || "Upload failed");
-      setLoading(false);
-    }
+async function handleSubmit(e) {
+  e.preventDefault();
+  if (!title || !price || !category || !contact || !state || !lga || !city) {
+    setError("All fields including location and contact are required");
+    return;
   }
+
+  setLoading(true);
+  setError("");
+
+  try {
+    const form = new FormData();
+    form.append("title", title);
+    form.append("description", description);
+    form.append("category", category);
+    form.append("price", price);
+    form.append("condition", condition);
+    form.append("contact", contact);
+    form.append("state", state);
+    form.append("lga", lga);
+    form.append("city", city);
+
+    images.forEach((file) => form.append("images", file));
+    if (video) form.append("video", video);
+
+    console.log("📦 Uploading with token:", localStorage.getItem("accessToken"));
+
+const token = localStorage.getItem("accessToken");
+
+const resp = await axios.post("http://localhost:5000/api/products", form, {
+  headers: {
+    Authorization: `Bearer ${token}`, // ✅ ensure token included
+    "Content-Type": "multipart/form-data",
+  },
+  withCredentials: true, // ✅ if your backend uses cookies
+});
+
+    onCreated && onCreated(resp.data.product);
+
+    // Reset form
+    setTitle("");
+    setDescription("");
+    setCategory("");
+    setContact("");
+    setImages([]);
+    setVideo(null);
+    setPrice("");
+    setCondition("new");
+    setState("");
+    setLga("");
+    setCity("");
+  } catch (err) {
+    console.error(err);
+    setError(err?.response?.data?.message || "Upload failed");
+    setLoading(false);
+  }
+}
+
 
   return (
     <form

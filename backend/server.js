@@ -8,7 +8,7 @@ import mongoose from "mongoose"; // 🧩 Add this
 
 // ✅ Route Imports
 import authRoutes from "./routes/authRoutes.js";
-import productRoutes from "./routes/product.js";
+import productRoutes from "./routes/productRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
 import cartRoutes from "./routes/cartRoutes.js";
@@ -20,6 +20,7 @@ import webhookRoutes from "./routes/webhookRoutes.js";
 import walletRoutes from "./routes/wallet.js";
 import adminAnalyticsRoutes from "./routes/adminAnalyticsRoutes.js";
 import disputeRoutes from "./routes/disput.js";
+import userRoutes from "./routes/userRoutes.js";
 
 // ✅ Utility Imports
 import { initSocket } from "./utils/socket.js";
@@ -45,8 +46,10 @@ initSocket(io);
 // ✅ Proper CORS configuration
 app.use(
   cors({
-    origin: "https://mainmarket.netlify.app/", // React frontend
-    credentials: true,               // allow cookies / headers
+    origin: "https://mainmarket.netlify.app",
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"], // ✅ key line
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
   })
 );
 
@@ -62,6 +65,8 @@ app.post(
 
 // ✅ Use JSON parser for all other routes
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 
 // ✅ Routes
 app.use("/api/auth", authRoutes);
@@ -77,6 +82,7 @@ app.use("/api/webhook", webhookRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/admin/analytics", adminAnalyticsRoutes);
 app.use("/api/disputes", disputeRoutes);
+app.use("/api/user", userRoutes);
 
 // ✅ Socket.IO Events
 io.on("connection", (socket) => {

@@ -3,22 +3,31 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 
 // ✅ Protect routes (requires token)
-const protect = async (req, res, next) => {
+export const protect = async (req, res, next) => {
   let token = req.headers.authorization?.split(" ")[1];
 
+  console.log("🟢 Incoming token:", token);
+
   if (!token) {
+    console.log("❌ No token provided");
     return res.status(401).json({ message: "No token provided" });
   }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select("-password");
+    console.log("✅ Decoded token:", decoded);
 
-    if (!user) return res.status(404).json({ message: "User not found" });
+    const user = await User.findById(decoded.id).select("-password");
+    if (!user) {
+      console.log("❌ User not found for decoded ID:", decoded.id);
+      return res.status(404).json({ message: "User not found" });
+    }
 
     req.user = user;
+    console.log("✅ Authenticated user:", user.email);
     next();
   } catch (error) {
+    console.error("🔥 JWT verification failed:", error.message);
     return res.status(403).json({ message: "Invalid or expired token" });
   }
 };
@@ -56,4 +65,4 @@ export const verifyUser = async (req, res, next) => {
   }
 };
 
-export { protect };
+

@@ -5,32 +5,65 @@ import {
   X,
   ShoppingCart,
   MessageSquare,
-  User,
   LogOut,
-  Settings,
-  Package,
-  LayoutDashboard,
 } from "lucide-react";
+import {api, setAccessToken} from "../utils/axiosInstance";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    // Check for user info in localStorage (assuming user info is stored after login)
+  // Load user info from localStorage
+useEffect(() => {
+  const loadUser = () => {
     const storedUser = localStorage.getItem("userInfo");
     if (storedUser) {
       setUser(JSON.parse(storedUser));
+    } else {
+      setUser(null);
     }
-  }, []);
+  };
 
-  const handleLogout = () => {
+  loadUser(); // initial load
+
+  // Listen for localStorage changes (e.g., from login/signup/logout)
+  window.addEventListener("storage", loadUser);
+
+  return () => {
+    window.removeEventListener("storage", loadUser);
+  };
+}, []);
+
+
+  // Handle logout
+const handleLogout = async () => {
+  try {
+    // Optional: Tell backend to clear refresh token cookie
+    await api.post("/auth/logout");
+
+    // Remove local session data
     localStorage.removeItem("userInfo");
+    localStorage.removeItem("accessToken");
+    setAccessToken(null); // also clear token in memory
+    delete api.defaults.headers.common["Authorization"];
+
+    // Clear user state
+    setUser(null);
+
+    // Redirect to login
+    navigate("/login");
+  } catch (error) {
+    console.error("Logout error:", error);
+    // Even if the backend fails, still clear client state
+    localStorage.removeItem("userInfo");
+    localStorage.removeItem("accessToken");
+    setAccessToken(null);
+    delete api.defaults.headers.common["Authorization"];
     setUser(null);
     navigate("/login");
-  };
+  }
+};
 
   return (
     <nav className="fixed top-0 left-0 w-full bg-white shadow-md z-50">
@@ -58,7 +91,7 @@ const Navbar = () => {
           />
         </div>
 
-        {/* Icons / User */}
+        {/* Icons / User Section */}
         <div className="flex items-center space-x-4 relative">
           <ShoppingCart
             className="cursor-pointer hover:text-blue-600 transition"
@@ -69,7 +102,7 @@ const Navbar = () => {
             onClick={() => navigate("/messages")}
           />
 
-          {/* Conditional User Section */}
+          {/* Conditional Buttons */}
           {!user ? (
             <div className="hidden md:flex space-x-3">
               <Link
@@ -86,48 +119,24 @@ const Navbar = () => {
               </Link>
             </div>
           ) : (
-            <div className="relative">
-              <button
-                className="flex items-center gap-1 cursor-pointer hover:text-blue-600 transition"
-                onClick={() => setDropdownOpen(!dropdownOpen)}
+            <div className="hidden md:flex space-x-3 items-center">
+              <Link
+                to="/dashboard"
+                className="px-4 py-1 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition"
               >
-                <User />
-                <span className="font-medium">{user.name?.split(" ")[0]}</span>
+                Dashboard
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="px-4 py-1 border border-red-600 text-red-600 rounded-full hover:bg-red-600 hover:text-white transition"
+              >
+                <LogOut className="cursor-pointer hover:text-blue-600 transition" />
+                Logout
               </button>
-
-              {/* Dropdown */}
-              {dropdownOpen && (
-                <div className="absolute right-0 mt-2 bg-white border rounded-md shadow-lg w-44">
-                  <Link
-                    to="/account"
-                    className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                  >
-                    <LayoutDashboard size={16} /> Overview
-                  </Link>
-                  <Link
-                    to="/orders"
-                    className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                  >
-                    <Package size={16} /> My Orders
-                  </Link>
-                  <Link
-                    to="/settings"
-                    className="flex items-center gap-2 px-4 py-2 hover:bg-gray-100"
-                  >
-                    <Settings size={16} /> Settings
-                  </Link>
-                  <button
-                    onClick={handleLogout}
-                    className="w-full text-left flex items-center gap-2 px-4 py-2 hover:bg-gray-100 text-red-600"
-                  >
-                    <LogOut size={16} /> Logout
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
-          {/* Mobile Toggle */}
+          {/* Mobile Menu Toggle */}
           <button className="md:hidden" onClick={() => setOpen(!open)}>
             {open ? <X /> : <Menu />}
           </button>
@@ -153,8 +162,8 @@ const Navbar = () => {
             </>
           ) : (
             <>
-              <Link to="/account" className="block text-blue-600 font-medium">
-                Account
+              <Link to="/dashboard" className="block text-blue-600 font-medium">
+                Dashboard
               </Link>
               <button
                 onClick={handleLogout}

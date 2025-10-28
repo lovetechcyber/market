@@ -23,46 +23,85 @@ export default function Signup() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Fetch all Nigerian states on mount
-  useEffect(() => {
-    const fetchStates = async () => {
-      try {
-        const res = await fetch("https://nga-states-lga.onrender.com/fetch");
-        const data = await res.json();
+useEffect(() => {
+  const fetchStates = async () => {
+    try {
+      const res = await fetch("https://nga-states-lga.onrender.com/fetch");
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      // Confirm correct format before mapping
+      if (Array.isArray(data)) {
         setStates(data.map((item) => item.name));
-      } catch (err) {
-        console.error("Error fetching states:", err);
+      } else if (data?.states) {
+        setStates(data.states.map((item) => item.name));
+      } else {
+        console.error("Unexpected data format:", data);
       }
-    };
-    fetchStates();
-  }, []);
+    } catch (err) {
+      console.error("Error fetching states:", err);
 
-  // Fetch LGAs when state changes
-  useEffect(() => {
-    const fetchLgas = async () => {
-      if (!form.state) return;
-      try {
-        const res = await fetch(`https://nga-states-lga.onrender.com/?state=${form.state}`);
-        const data = await res.json();
-        setLgas(data.lgas || []);
-      } catch (err) {
-        console.error("Error fetching LGAs:", err);
-      }
-    };
-    fetchLgas();
-  }, [form.state]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    // Reset dependent dropdowns when parent changes
-    if (name === "state") {
-      setForm({ ...form, state: value, localGovernment: "", town: "" });
-    } else if (name === "localGovernment") {
-      setForm({ ...form, localGovernment: value, town: "" });
-    } else {
-      setForm({ ...form, [name]: value });
+      // Optional: fallback list (for when API is down)
+      setStates([
+        "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa",
+        "Benue", "Borno", "Cross River", "Delta", "Ebonyi", "Edo",
+        "Ekiti", "Enugu", "FCT", "Gombe", "Imo", "Jigawa", "Kaduna",
+        "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos",
+        "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo",
+        "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara",
+      ]);
     }
   };
+
+  fetchStates();
+}, []);
+
+// Fetch LGAs when state changes
+useEffect(() => {
+  const fetchLgas = async () => {
+    if (!form.state) return;
+    try {
+      const res = await fetch(
+        `https://nga-states-lga.onrender.com/?state=${encodeURIComponent(form.state)}`
+      );
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! Status: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      if (data?.lgas) {
+        setLgas(data.lgas);
+      } else {
+        console.error("Unexpected LGA format:", data);
+        setLgas([]);
+      }
+    } catch (err) {
+      console.error("Error fetching LGAs:", err);
+      setLgas([]);
+    }
+  };
+
+  fetchLgas();
+}, [form.state]);
+
+// Handle change for cascading dropdowns
+const handleChange = (e) => {
+  const { name, value } = e.target;
+
+  if (name === "state") {
+    setForm({ ...form, state: value, localGovernment: "", town: "" });
+  } else if (name === "localGovernment") {
+    setForm({ ...form, localGovernment: value, town: "" });
+  } else {
+    setForm({ ...form, [name]: value });
+  }
+};
 
   const validatePassword = (password) => {
     const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;

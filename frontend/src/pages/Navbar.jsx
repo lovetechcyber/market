@@ -37,31 +37,20 @@ useEffect(() => {
 
 
   // Handle logout
+const [loggingOut, setLoggingOut] = useState(false);
+
 const handleLogout = async () => {
+  setLoggingOut(true);
   try {
-    // Optional: Tell backend to clear refresh token cookie
     await api.post("/auth/logout");
-
-    // Remove local session data
-    localStorage.removeItem("userInfo");
-    localStorage.removeItem("accessToken");
-    setAccessToken(null); // also clear token in memory
-    delete api.defaults.headers.common["Authorization"];
-
-    // Clear user state
-    setUser(null);
-
-    // Redirect to login
-    navigate("/login");
-  } catch (error) {
-    console.error("Logout error:", error);
-    // Even if the backend fails, still clear client state
+  } finally {
     localStorage.removeItem("userInfo");
     localStorage.removeItem("accessToken");
     setAccessToken(null);
     delete api.defaults.headers.common["Authorization"];
     setUser(null);
     navigate("/login");
+    setLoggingOut(false);
   }
 };
 
@@ -126,13 +115,20 @@ const handleLogout = async () => {
               >
                 Dashboard
               </Link>
-              <button
-                onClick={handleLogout}
-                className="px-4 py-1 border border-red-600 text-red-600 rounded-full hover:bg-red-600 hover:text-white transition"
-              >
-                <LogOut className="cursor-pointer hover:text-blue-600 transition" />
-                Logout
-              </button>
+             <button
+  onClick={handleLogout}
+  disabled={loggingOut}
+  className={`flex items-center gap-2 px-4 py-1 border border-red-600 text-red-600 rounded-full transition ${
+    loggingOut ? "opacity-50 cursor-not-allowed" : "hover:bg-red-600 hover:text-white"
+  }`}
+>
+  {loggingOut ? (
+    <span className="animate-spin border-2 border-t-transparent rounded-full w-4 h-4"></span>
+  ) : (
+    <LogOut className="w-4 h-4" />
+  )}
+  {loggingOut ? "Logging out..." : "Logout"}
+</button>
             </div>
           )}
 
@@ -166,12 +162,20 @@ const handleLogout = async () => {
               <Link to="/dashboard" className="block text-blue-600 font-medium">
                 Dashboard
               </Link>
-              <button
-                onClick={handleLogout}
-                className="block text-red-500 font-medium w-full text-left"
-              >
-                Logout
-              </button>
+            <button
+  onClick={handleLogout}
+  disabled={loggingOut}
+  className={`flex items-center gap-2 px-4 py-1 border border-red-600 text-red-600 rounded-full transition ${
+    loggingOut ? "opacity-50 cursor-not-allowed" : "hover:bg-red-600 hover:text-white"
+  }`}
+>
+  {loggingOut ? (
+    <span className="animate-spin border-2 border-t-transparent rounded-full w-4 h-4"></span>
+  ) : (
+    <LogOut className="w-4 h-4" />
+  )}
+  {loggingOut ? "Logging out..." : "Logout"}
+</button>
             </>
           )}
         </div>

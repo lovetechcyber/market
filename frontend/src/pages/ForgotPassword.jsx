@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import api from "../api/axios";
+import {api} from "../api/axios";
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState("");

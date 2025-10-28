@@ -148,6 +148,7 @@ const handleLogout = async () => {
         <div className="md:hidden bg-white shadow-md px-4 py-3 space-y-2">
           <Link to="/" className="block hover:text-blue-600">Home</Link>
           <Link to="/shop" className="block hover:text-blue-600">Shop</Link>
+<Link to="/product-upload" className="hover:text-blue-600 transition">Post Ads</Link>
           <Link to="/categories" className="block hover:text-blue-600">Categories</Link>
           <Link to="/support" className="block hover:text-blue-600">Support</Link>
 

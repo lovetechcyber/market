@@ -209,53 +209,52 @@ const handleSubmit = async (e) => {
             className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
           />
 
-          {/* Dynamic Dropdowns */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            {/* State */}
-            <select
-              name="state"
-              value={form.state}
-              onChange={handleChange}
-              required
-              className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select State</option>
-              {states.map((state) => (
-                <option key={state} value={state}>
-                  {state}
-                </option>
-              ))}
-            </select>
+      {/* State */}
+      <select
+        name="state"
+        value={form.state}
+        onChange={handleChange}
+        required
+        className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">Select State</option>
+        {states.map((state) => (
+          <option key={state} value={state}>
+            {state}
+          </option>
+        ))}
+      </select>
 
-            {/* LGA */}
-            <select
-              name="localGovernment"
-              value={form.localGovernment}
-              onChange={handleChange}
-              required
-              disabled={!form.state}
-              className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select LGA</option>
-              {lgas.map((lga) => (
-                <option key={lga} value={lga}>
-                  {lga}
-                </option>
-              ))}
-            </select>
+      {/* LGA */}
+      <select
+        name="localGovernment"
+        value={form.localGovernment}
+        onChange={handleChange}
+        required
+        disabled={!form.state}
+        className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">Select LGA</option>
+        {lgas.map((lga) => (
+          <option key={lga} value={lga}>
+            {lga}
+          </option>
+        ))}
+      </select>
 
-            {/* Town / City */}
-            <input
-              type="text"
-              name="town"
-              placeholder="Town / City"
-              value={form.town}
-              onChange={handleChange}
-              required
-              disabled={!form.localGovernment}
-              className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+      {/* Town / City */}
+      <input
+        type="text"
+        name="town"
+        placeholder="Town / City"
+        value={form.town}
+        onChange={handleChange}
+        required
+        disabled={!form.localGovernment}
+        className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+      />
+    </div>
 
           {/* Password Field */}
           <div className="relative">

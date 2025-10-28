@@ -26,7 +26,7 @@ export default function Signup() {
   useEffect(() => {
     const fetchStates = async () => {
       try {
-        const res = await fetch("https://nigerian-states-api.onrender.com/api/states");
+        const res = await fetch("https://nga-states-lga.onrender.com/fetch");
         const data = await res.json();
         setStates(data.map((item) => item.name));
       } catch (err) {
@@ -41,7 +41,7 @@ export default function Signup() {
     const fetchLgas = async () => {
       if (!form.state) return;
       try {
-        const res = await fetch(`https://nga-states-lga.onrender.com/api/states/${form.state}`);
+        const res = await fetch(`https://nga-states-lga.onrender.com/?state=${form.state}`);
         const data = await res.json();
         setLgas(data.lgas || []);
       } catch (err) {

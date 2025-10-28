@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { useState, useEffect } from "react";
-import api, { authHeader } from "../../api/axios";
+import  { api, authHeader } from "../../api/axios";
 import axios from "axios";
 
 export default function ProductUpload({ token, onCreated }) {

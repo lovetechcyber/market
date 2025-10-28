@@ -34,18 +34,18 @@ useEffect(() => {
 
       const data = await res.json();
 
-      // Confirm correct format before mapping
+      // API returns [{ state: "Abia", lgas: [...] }, ...]
       if (Array.isArray(data)) {
-        setStates(data.map((item) => item.name));
+        setStates(data.map((item) => item.state));
       } else if (data?.states) {
-        setStates(data.states.map((item) => item.name));
+        setStates(data.states.map((item) => item.state));
       } else {
         console.error("Unexpected data format:", data);
       }
     } catch (err) {
       console.error("Error fetching states:", err);
 
-      // Optional: fallback list (for when API is down)
+      // Fallback in case API is unavailable
       setStates([
         "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa",
         "Benue", "Borno", "Cross River", "Delta", "Ebonyi", "Edo",
@@ -74,9 +74,15 @@ useEffect(() => {
       }
 
       const data = await res.json();
+      console.log("Fetched LGA data:", data); // For debugging
 
-      if (data?.lgas) {
+      if (Array.isArray(data)) {
+        // Sometimes the API returns an array directly
+        setLgas(data);
+      } else if (Array.isArray(data?.lgas)) {
         setLgas(data.lgas);
+      } else if (data[form.state]) {
+        setLgas(data[form.state]);
       } else {
         console.error("Unexpected LGA format:", data);
         setLgas([]);
@@ -90,7 +96,7 @@ useEffect(() => {
   fetchLgas();
 }, [form.state]);
 
-// Handle change for cascading dropdowns
+// Handle cascading dropdown logic
 const handleChange = (e) => {
   const { name, value } = e.target;
 

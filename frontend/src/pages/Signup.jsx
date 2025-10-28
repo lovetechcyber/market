@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import api from "../api/axios";
+import {api} from "../api/axios";
 
 export default function Signup() {
   const navigate = useNavigate();

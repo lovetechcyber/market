@@ -4,66 +4,110 @@ import Product from '../models/Product.js';
 import User from '../models/User.js';
 import cloudinary from '../utils/cloudinary.js';
 import { protect } from '../middleware/authMiddleware.js';
+import multer from "multer";
 import mongoose from 'mongoose';
+
+
 
 /**
  * POST /api/products
  * Create product + upload media to Cloudinary
  */
-router.post('/', protect, async (req, res) => {
-  try {
-    const { title, description, category, price, condition, contact } = req.body;
+// Upload product (images + optional video)
 
-    if (!title || !price || !category || !contact) {
-      return res.status(400).json({ message: 'Title, price, category, and contact are required' });
-    }
 
-    const product = new Product({
-      title,
-      description,
-      category,
-      price,
-      condition,
-      contact,
-      seller: req.user._id
-    });
+// ===== MULTER SETUP =====
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
-    // Upload images
-    if (req.files && req.files.images) {
-      const imagesArr = Array.isArray(req.files.images) ? req.files.images : [req.files.images];
-      for (const file of imagesArr) {
-        const upload = await cloudinary.uploader.upload(file.path || file.tempFilePath, {
-          folder: `marketplace/products/${req.user._id}`,
-          resource_type: 'image'
-        });
-        product.images.push({
-          url: upload.secure_url,
-          public_id: upload.public_id,
-          type: 'image'
+
+// ===== Product Upload Route =====
+router.post(
+  "/",
+  protect,
+  upload.fields([
+    { name: "images", maxCount: 5 },
+    { name: "video", maxCount: 1 },
+  ]),
+  async (req, res) => {
+    try {
+      const { title, description, category, price, condition, contact } = req.body;
+
+      if (!title || !price || !category || !contact) {
+        return res.status(400).json({
+          message: "Title, price, category, and contact are required",
         });
       }
-    }
 
-    // Upload video
-    if (req.files && req.files.video) {
-      const upload = await cloudinary.uploader.upload(req.files.video.path || req.files.video.tempFilePath, {
-        folder: `marketplace/products/${req.user._id}`,
-        resource_type: 'video'
+      const product = new Product({
+        title,
+        description,
+        category,
+        price,
+        condition,
+        contact,
+        seller: req.user._id,
       });
-      product.video = {
-        url: upload.secure_url,
-        public_id: upload.public_id,
-        type: 'video'
-      };
-    }
 
-    await product.save();
-    res.json({ product });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error', error: err.message });
+      // ===== Upload Images =====
+      if (req.files?.images) {
+        for (const file of req.files.images) {
+          const result = await new Promise((resolve, reject) => {
+            const stream = cloudinary.uploader.upload_stream(
+              {
+                folder: `marketplace/products/${req.user._id}`,
+                resource_type: "image",
+              },
+              (error, result) => {
+                if (error) reject(error);
+                else resolve(result);
+              }
+            );
+            stream.end(file.buffer);
+          });
+
+          product.images.push({
+            url: result.secure_url,
+            public_id: result.public_id,
+            type: "image",
+          });
+        }
+      }
+
+      // ===== Upload Video =====
+      if (req.files?.video) {
+        const videoFile = req.files.video[0];
+        const result = await new Promise((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream(
+            {
+              folder: `marketplace/products/${req.user._id}`,
+              resource_type: "video",
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+          stream.end(videoFile.buffer);
+        });
+
+        product.video = {
+          url: result.secure_url,
+          public_id: result.public_id,
+          type: "video",
+        };
+      }
+
+      await product.save();
+      res.status(201).json({ product });
+    } catch (err) {
+      console.error("🔥 Upload error:", err);
+      res.status(500).json({ message: "Server error", error: err.message });
+    }
   }
-});
+);
+
+
 
 /**
  * GET /api/products

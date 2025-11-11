@@ -98,17 +98,23 @@ async function handleSubmit(e) {
     images.forEach((file) => form.append("images", file));
     if (video) form.append("video", video);
 
-    console.log("📦 Uploading with token:", localStorage.getItem("accessToken"));
+    const token = localStorage.getItem("token"); // ✅ Correct key
 
-const token = localStorage.getItem("accessToken");
+    if (!token) {
+      setError("You must be logged in to upload a product");
+      setLoading(false);
+      return;
+    }
 
-const resp = await axios.post("http://localhost:5000/api/products", form, {
-  headers: {
-    Authorization: `Bearer ${token}`, // ✅ ensure token included
-    "Content-Type": "multipart/form-data",
-  },
-  withCredentials: true, // ✅ if your backend uses cookies
-});
+    console.log("📦 Uploading with token:", token);
+
+    const resp = await api.post("/products", form, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "multipart/form-data",
+      },
+      withCredentials: true,
+    });
 
     onCreated && onCreated(resp.data.product);
 

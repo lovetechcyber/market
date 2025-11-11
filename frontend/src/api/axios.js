@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "https://market-e50k.onrender.com/api",
+  baseURL: "http://localhost:5000/api",
   withCredentials: true, // enable cookies for refresh token
   headers: { "Content-Type": "application/json" }
 });
@@ -64,5 +64,4 @@ api.interceptors.response.use(
   }
 );
 
-export {api};
-
+export { api }; // ✅ named export, not default

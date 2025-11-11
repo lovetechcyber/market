@@ -24,6 +24,8 @@ import userRoutes from "./routes/userRoutes.js";
 
 // ✅ Utility Imports
 import { initSocket } from "./utils/socket.js";
+import cookieParser from "cookie-parser";
+
 
 dotenv.config();
 
@@ -46,7 +48,7 @@ initSocket(io);
 // ✅ Proper CORS configuration
 app.use(
   cors({
-    origin: "https://mainmarket.netlify.app",
+    origin: "http://localhost:5173",
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"], // ✅ key line
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
@@ -66,6 +68,10 @@ app.post(
 // ✅ Use JSON parser for all other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// ✅ Parse cookies from incoming requests
+app.use(cookieParser());
+
 
 
 // ✅ Routes

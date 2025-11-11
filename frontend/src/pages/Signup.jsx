@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {api} from "../api/axios";
+import { api } from "../api/axios";
 
 export default function Signup() {
   const navigate = useNavigate();
@@ -19,155 +19,143 @@ export default function Signup() {
   const [lgas, setLgas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedState, setSelectedState] = useState("");
+  const [selectedLga, setSelectedLga] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   // Fetch all Nigerian states on mount
-useEffect(() => {
-  const fetchStates = async () => {
-    try {
-      const res = await fetch("https://nga-states-lga.onrender.com/fetch");
+  useEffect(() => {
+    const fetchStates = async () => {
+      try {
+        const res = await fetch("https://nga-states-lga.onrender.com/fetch");
+        const data = await res.json();
+        console.log("🟢 Full state data:", data);
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! Status: ${res.status}`);
+        const stateNames = Array.isArray(data)
+          ? data.map((item) => (typeof item === "object" ? item.state : item))
+          : data.states?.map((item) =>
+              typeof item === "object" ? item.state : item
+            ) || [];
+
+        setStates(stateNames);
+      } catch (err) {
+        console.error("❌ Error fetching states:", err);
       }
+    };
 
-      const data = await res.json();
+    fetchStates();
+  }, []);
 
-      // API returns [{ state: "Abia", lgas: [...] }, ...]
-      if (Array.isArray(data)) {
-        setStates(data.map((item) => item.state));
-      } else if (data?.states) {
-        setStates(data.states.map((item) => item.state));
-      } else {
-        console.error("Unexpected data format:", data);
-      }
-    } catch (err) {
-      console.error("Error fetching states:", err);
-
-      // Fallback in case API is unavailable
-      setStates([
-        "Abia", "Adamawa", "Akwa Ibom", "Anambra", "Bauchi", "Bayelsa",
-        "Benue", "Borno", "Cross River", "Delta", "Ebonyi", "Edo",
-        "Ekiti", "Enugu", "FCT", "Gombe", "Imo", "Jigawa", "Kaduna",
-        "Kano", "Katsina", "Kebbi", "Kogi", "Kwara", "Lagos",
-        "Nasarawa", "Niger", "Ogun", "Ondo", "Osun", "Oyo",
-        "Plateau", "Rivers", "Sokoto", "Taraba", "Yobe", "Zamfara",
-      ]);
+  // Fetch LGAs for selected state
+  useEffect(() => {
+    if (!form.state) {
+      setLgas([]);
+      return;
     }
-  };
 
-  fetchStates();
-}, []);
+    const fetchLgas = async () => {
+      try {
+        const res = await fetch(
+          `https://nga-states-lga.onrender.com/?state=${encodeURIComponent(
+            form.state
+          )}`
+        );
+        const data = await res.json();
+        console.log("🟢 LGA response:", data);
 
-// Fetch LGAs when state changes
-useEffect(() => {
-  const fetchLgas = async () => {
-    if (!form.state) return;
-    try {
-      const res = await fetch(
-        `https://nga-states-lga.onrender.com/?state=${encodeURIComponent(form.state)}`
-      );
+        // Normalize LGA data
+        let extractedLgas = [];
+        if (Array.isArray(data)) {
+          extractedLgas = data;
+        } else if (data[form.state]) {
+          extractedLgas = data[form.state];
+        } else if (Array.isArray(data.lgas)) {
+          extractedLgas = data.lgas;
+        }
 
-      if (!res.ok) {
-        throw new Error(`HTTP error! Status: ${res.status}`);
-      }
-
-      const data = await res.json();
-      console.log("Fetched LGA data:", data); // For debugging
-
-      if (Array.isArray(data)) {
-        // Sometimes the API returns an array directly
-        setLgas(data);
-      } else if (Array.isArray(data?.lgas)) {
-        setLgas(data.lgas);
-      } else if (data[form.state]) {
-        setLgas(data[form.state]);
-      } else {
-        console.error("Unexpected LGA format:", data);
+        setLgas(extractedLgas);
+      } catch (err) {
+        console.error("❌ Error fetching LGAs:", err);
         setLgas([]);
       }
-    } catch (err) {
-      console.error("Error fetching LGAs:", err);
-      setLgas([]);
+    };
+
+    fetchLgas();
+  }, [form.state]);
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+
+    if (name === "state") {
+      setForm({ state: value, localGovernment: "", town: "" });
+    } else if (name === "localGovernment") {
+      setForm({ ...form, localGovernment: value, town: "" });
+    } else {
+      setForm({ ...form, [name]: value });
     }
   };
-
-  fetchLgas();
-}, [form.state]);
-
-// Handle cascading dropdown logic
-const handleChange = (e) => {
-  const { name, value } = e.target;
-
-  if (name === "state") {
-    setForm({ ...form, state: value, localGovernment: "", town: "" });
-  } else if (name === "localGovernment") {
-    setForm({ ...form, localGovernment: value, town: "" });
-  } else {
-    setForm({ ...form, [name]: value });
-  }
-};
 
   const validatePassword = (password) => {
     const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
     return regex.test(password);
   };
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
 
-  if (!validatePassword(form.password)) {
-    return setError(
-      "Password must contain at least one uppercase letter, one lowercase letter, one number, and be at least 8 characters long."
-    );
-  }
+    if (!validatePassword(form.password)) {
+      return setError(
+        "Password must contain at least one uppercase letter, one lowercase letter, one number, and be at least 8 characters long."
+      );
+    }
 
-  if (form.password !== form.confirmPassword) {
-    return setError("Passwords do not match");
-  }
+    if (form.password !== form.confirmPassword) {
+      return setError("Passwords do not match");
+    }
 
-  try {
-    setLoading(true);
-    const { data } = await api.post("/auth/signup", {
-      fullName: form.fullName,
-      email: form.email,
-      password: form.password,
-      confirmPassword: form.confirmPassword,
-      mobileNumber: form.mobileNumber,
-      location: {
-        state: form.state,
-        localGovernment: form.localGovernment,
-        town: form.town,
-      },
-    });
+    try {
+      setLoading(true);
+      const { data } = await api.post("/auth/signup", {
+        fullName: form.fullName,
+        email: form.email,
+        password: form.password,
+        confirmPassword: form.confirmPassword,
+        mobileNumber: form.mobileNumber,
+        location: {
+          state: form.state,
+          localGovernment: form.localGovernment,
+          town: form.town,
+        },
+      });
 
-    // ✅ Automatically log user in after signup
-    const loginRes = await api.post("/auth/login", {
-      email: form.email,
-      password: form.password,
-    });
+      // ✅ Automatically log user in after signup
+      const loginRes = await api.post("/auth/login", {
+        email: form.email,
+        password: form.password,
+      });
 
-    // ✅ Save token and user info
-    localStorage.setItem("accessToken", loginRes.data.accessToken);
-    localStorage.setItem("userInfo", JSON.stringify(loginRes.data.user));
+      // ✅ Save token and user info
+      localStorage.setItem("accessToken", loginRes.data.accessToken);
+      localStorage.setItem("userInfo", JSON.stringify(loginRes.data.user));
 
-    // ✅ Set default header for future API calls
-    api.defaults.headers.common["Authorization"] = `Bearer ${loginRes.data.accessToken}`;
+      // ✅ Set default header for future API calls
+      api.defaults.headers.common[
+        "Authorization"
+      ] = `Bearer ${loginRes.data.accessToken}`;
 
-    // ✅ Trigger Navbar re-render
-    window.dispatchEvent(new Event("storage"));
+      // ✅ Trigger Navbar re-render
+      window.dispatchEvent(new Event("storage"));
 
-    alert("Signup successful!");
-    navigate("/dashboard");
-  } catch (err) {
-    setError(err.response?.data?.message || "Signup failed");
-  } finally {
-    setLoading(false);
-  }
-};
-
+      alert("Signup successful!");
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.response?.data?.message || "Signup failed");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex justify-center items-center bg-gray-100 p-4 mt-10">
@@ -210,51 +198,49 @@ const handleSubmit = async (e) => {
           />
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      {/* State */}
-      <select
-        name="state"
-        value={form.state}
-        onChange={handleChange}
-        required
-        className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">Select State</option>
-        {states.map((state) => (
-          <option key={state} value={state}>
-            {state}
-          </option>
-        ))}
-      </select>
+            {/* State */}
+            <select
+              name="state"
+              value={form.state}
+              onChange={handleChange}
+              required
+            >
+              <option value="">Select State</option>
+              {states.map((state) => (
+                <option key={state} value={state}>
+                  {state}
+                </option>
+              ))}
+            </select>
 
-      {/* LGA */}
-      <select
-        name="localGovernment"
-        value={form.localGovernment}
-        onChange={handleChange}
-        required
-        disabled={!form.state}
-        className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="">Select LGA</option>
-        {lgas.map((lga) => (
-          <option key={lga} value={lga}>
-            {lga}
-          </option>
-        ))}
-      </select>
+            {/* LGA */}
+            <select
+              name="localGovernment"
+              value={form.localGovernment}
+              onChange={handleChange}
+              required
+              disabled={!form.state || lgas.length === 0}
+            >
+              <option value="">Select LGA</option>
+              {lgas.map((lga) => (
+                <option key={lga} value={lga}>
+                  {lga}
+                </option>
+              ))}
+            </select>
 
-      {/* Town / City */}
-      <input
-        type="text"
-        name="town"
-        placeholder="Town / City"
-        value={form.town}
-        onChange={handleChange}
-        required
-        disabled={!form.localGovernment}
-        className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
-      />
-    </div>
+            {/* Town / City */}
+            <input
+              type="text"
+              name="town"
+              placeholder="Town / City"
+              value={form.town}
+              onChange={handleChange}
+              required
+              disabled={!form.localGovernment}
+              className="p-3 border rounded-lg focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
           {/* Password Field */}
           <div className="relative">

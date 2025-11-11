@@ -114,39 +114,28 @@ router.post("/logout", (req, res) => {
   }
 });
 
-router.post("/logout", (req, res) => {
-  try {
-    // Clear the refresh token cookie
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // only secure in prod
-      sameSite: "strict",
-      path: "/", // must match the cookie path used during login
-    });
-
-    return res.status(200).json({ message: "Logged out successfully" });
-  } catch (error) {
-    console.error("Logout error:", error);
-    res.status(500).json({ message: "Failed to log out" });
-  }
-});
-
-
 /**
  * @route POST /api/auth/refresh
  */
 router.post("/refresh", (req, res) => {
   const refreshToken = req.cookies.refreshToken;
-  if (!refreshToken) return res.status(401).json({ message: "No refresh token provided" });
-  if (!refreshTokens.includes(refreshToken)) return res.status(403).json({ message: "Invalid refresh token" });
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: "No refresh token provided" });
+  }
 
   jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ message: "Token expired or invalid" });
+    if (err) {
+      console.error("❌ Token verification failed:", err.message);
+      return res.status(403).json({ message: "Token expired or invalid" });
+    }
 
     const newAccessToken = generateAccessToken(user.id);
+    console.log("✅ Issued new access token for:", user.id);
     res.json({ accessToken: newAccessToken });
   });
 });
+
 
 /**
  * @route POST /api/auth/logout

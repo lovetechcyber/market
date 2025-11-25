@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {api, setAccessToken} from "../utils/axiosInstance";
+import {api, setAccessToken} from "../api/axios";
 
 export default function Login() {
   const [form, setForm] = useState({ email: "", password: "" });
@@ -64,7 +64,7 @@ const handleSubmit = async (e) => {
           Login
         </button>
         <p className="text-center text-sm mt-4">
-          Don't have an account?{" "}
+          Don&apos;t have an account?{" "}
           <span
             onClick={() => navigate("/signup")}
             className="text-blue-600 cursor-pointer hover:underline"

@@ -1,9 +1,9 @@
-import React from "react";
 import AdminEscrowAnalytics from "./AdminEscrowAnalytics";
 import AdminEscrowsTable from "./AdminEscrowsTable";
 import AdminWithdrawals from "./AdminWithdrawals";
 import AdminSidebar from "./AdminSidebar";
 import AdminNavbar from "./AdminNavbar";
+import AdminCategories from "./AdminCategories";
 import {
   BarChart,
   Bar,
@@ -12,6 +12,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+
 import Users from "./Users";
 import Setting from "./Settings";
 import CommissionSettings from "./CommissionSetting";
@@ -29,66 +30,81 @@ const data = [
 
 export default function AdminDashboard() {
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+    <div className="flex bg-gray-100 min-h-screen">
+      {/* Sidebar */}
+      <AdminSidebar />
 
-      <div className="flex">
-        <AdminSidebar />
-        <div className="ml-64 w-full min-h-screen bg-gray-100">
-          <AdminNavbar />
-          <div className="p-6">
-            <h2 className="text-2xl font-semibold mb-6">Overview</h2>
-            <div className="grid grid-cols-4 gap-4 mb-8">
-              {[
-                { title: "Total Users", value: "1,240" },
-                { title: "Total Sales", value: "850" },
-                { title: "Revenue", value: "₦54,000" },
-                { title: "Disputes", value: "3" },
-              ].map((stat, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-2xl p-4 shadow hover:shadow-md transition"
-                >
-                  <h3 className="text-gray-600 text-sm">{stat.title}</h3>
-                  <p className="text-2xl font-bold">{stat.value}</p>
-                </div>
-              ))}
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 ml-64">
+        <AdminNavbar />
+
+        <div className="p-6 space-y-10">
+          {/* Page Title */}
+          <h1 className="text-3xl font-bold tracking-tight text-gray-800">
+            Admin Dashboard
+          </h1>
+
+          {/* Stats Section */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+            {[
+              { title: "Total Users", value: "1,240" },
+              { title: "Total Sales", value: "850" },
+              { title: "Revenue", value: "₦54,000" },
+              { title: "Disputes", value: "3" },
+            ].map((stat, i) => (
+              <div
+                key={i}
+                className="bg-white rounded-xl p-6 shadow hover:shadow-lg transition duration-200"
+              >
+                <h3 className="text-gray-500 text-sm">{stat.title}</h3>
+                <p className="text-3xl font-semibold text-gray-900 mt-1">
+                  {stat.value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Chart Section */}
+          <div className="bg-white p-6 rounded-2xl shadow-md">
+            <h3 className="text-xl font-semibold mb-4 text-gray-800">
+              Sales & Revenue
+            </h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={data}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="sales" fill="#3b82f6" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="revenue" fill="#10b981" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Analytics + Withdrawals + Categories */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <AdminEscrowAnalytics />
             </div>
-            <div className="bg-white p-6 rounded-2xl shadow">
-              <h3 className="text-lg font-semibold mb-4">Sales & Revenue</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={data}>
-                  <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="sales" fill="#3b82f6" />
-                  <Bar dataKey="revenue" fill="#10b981" />
-                </BarChart>
-              </ResponsiveContainer>
+
+            <div className="space-y-6">
+              <AdminWithdrawals />
+              <AdminCategories />
             </div>
           </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <AdminEscrowAnalytics />
-        </div>
-        <div>
-          <AdminWithdrawals />
-        </div>
-      </div>
+          {/* Tables & Other Modules */}
+          <AdminEscrowsTable />
 
-      <div>
-        <AdminEscrowsTable />
+          {/* Additional Admin Pages */}
+          <Users />
+          <Product />
+          <Order />
+          <Report />
+          <Support />
+          <Setting />
+          <CommissionSettings />
+        </div>
       </div>
-              <Users />
-        <Product />
-        <Order />
-        <Report />
-        <Support />
-        <Setting />
-        <CommissionSettings />
     </div>
   );
 }

@@ -7,7 +7,7 @@ import {
   MessageSquare,
   LogOut,
 } from "lucide-react";
-import {api, setAccessToken} from "../utils/axiosInstance";
+import {api, setAccessToken} from "../api/axios";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
@@ -65,9 +65,8 @@ const handleLogout = async () => {
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center space-x-6">
           <Link to="/" className="hover:text-blue-600 transition">Home</Link>
-          <Link to="/shop" className="hover:text-blue-600 transition">Shop</Link>
+          <Link to="/product-listing" className="hover:text-blue-600 transition">Shop</Link>
           <Link to="/product-upload" className="hover:text-blue-600 transition">Post Ads</Link>
-          <Link to="/categories" className="hover:text-blue-600 transition">Categories</Link>
           <Link to="/support" className="hover:text-blue-600 transition">Support</Link>
         </div>
 

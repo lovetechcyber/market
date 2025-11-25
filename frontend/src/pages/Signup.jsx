@@ -19,8 +19,6 @@ export default function Signup() {
   const [lgas, setLgas] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [selectedState, setSelectedState] = useState("");
-  const [selectedLga, setSelectedLga] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 

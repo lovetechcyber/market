@@ -14,7 +14,7 @@ import {
   Flag,
   Menu,
 } from "lucide-react";
-import { PaymentContext } from "../components/contex/PaymentContex"; // adjust path if needed
+import { PaymentContext } from "../components/contex/PaymentContex"; 
 
 export default function Dashboard() {
   const [active, setActive] = useState("overview");

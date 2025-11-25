@@ -207,7 +207,7 @@ export default function ProductListing() {
                   Phone: {p.seller?.phone || 'Not provided'}
                 </div>
                 <Link
-                  to={`/product/${p._id}`}
+                  to={`/products/${p._id}`}
                   className="mt-2 inline-block text-blue-600 hover:underline"
                 >
                   View

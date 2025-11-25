@@ -48,7 +48,7 @@ initSocket(io);
 // ✅ Proper CORS configuration
 app.use(
   cors({
-    origin: "https://mainmarket.netlify.app",
+    origin: "http://localhost:5173", // frontend URL
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization"], // ✅ key line
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
